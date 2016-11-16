@@ -496,6 +496,9 @@ void av1_first_pass(AV1_COMP *cpi, const struct lookahead_entry *source) {
 #if CONFIG_PVQ
   PVQ_QUEUE pvq_q;
 #endif
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT tmp_ctx;
+#endif
 
   // First pass code requires valid last and new frame buffers.
   assert(new_yv12 != NULL);
@@ -530,11 +533,11 @@ void av1_first_pass(AV1_COMP *cpi, const struct lookahead_entry *source) {
 
   av1_frame_init_quantizer(cpi);
 
-#if CONFIG_PVQ
+#if CONFIG_PVQ || CONFIG_EC_ADAPT
   // For pass 1 of 2-pass encoding, init here for PVQ for now.
   {
-    od_adapt_ctx *adapt;
-
+#if CONFIG_PVQ
+    av1_adapt_ctx *adapt;
     pvq_q.buf_len = 5000;
     CHECK_MEM_ERROR(cm, pvq_q.buf,
                     aom_malloc(pvq_q.buf_len * sizeof(PVQ_INFO)));
@@ -554,10 +557,12 @@ void av1_first_pass(AV1_COMP *cpi, const struct lookahead_entry *source) {
     od_init_qm(x->daala_enc.state.qm, x->daala_enc.state.qm_inv,
                x->daala_enc.qm == OD_HVS_QM ? OD_QM8_Q4_HVS : OD_QM8_Q4_FLAT);
     od_ec_enc_init(&x->daala_enc.ec, 65025);
-
     adapt = &x->daala_enc.state.adapt;
     od_ec_enc_reset(&x->daala_enc.ec);
     od_adapt_ctx_reset(adapt, 0);
+#elif CONFIG_EC_ADAPT
+    xd->tile_ctx = &tmp_ctx;
+#endif
   }
 #endif
 
@@ -965,7 +970,9 @@ void av1_first_pass(AV1_COMP *cpi, const struct lookahead_entry *source) {
 
 #if CONFIG_PVQ
   od_ec_enc_clear(&x->daala_enc.ec);
+#endif
 
+#if CONFIG_PVQ
   x->pvq_q->last_pos = x->pvq_q->curr_pos;
   x->pvq_q->curr_pos = 0;
   x->pvq_q = NULL;

@@ -90,9 +90,15 @@ static int read_delta_qindex(AV1_COMMON *cm, MACROBLOCKD *xd, aom_reader *r,
 
 static PREDICTION_MODE read_intra_mode_y(AV1_COMMON *cm, MACROBLOCKD *xd,
                                          aom_reader *r, int size_group) {
+#if CONFIG_EC_ADAPT
+  (void)cm;
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
   const PREDICTION_MODE y_mode =
 #if CONFIG_DAALA_EC
-      read_intra_mode(r, cm->fc->y_mode_cdf[size_group]);
+      read_intra_mode(r, tile_ctx->y_mode_cdf[size_group]);
 #else
       read_intra_mode(r, cm->fc->y_mode_prob[size_group]);
 #endif
@@ -104,9 +110,15 @@ static PREDICTION_MODE read_intra_mode_y(AV1_COMMON *cm, MACROBLOCKD *xd,
 static PREDICTION_MODE read_intra_mode_uv(AV1_COMMON *cm, MACROBLOCKD *xd,
                                           aom_reader *r,
                                           PREDICTION_MODE y_mode) {
+#if CONFIG_EC_ADAPT
+  (void)cm;
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
   const PREDICTION_MODE uv_mode =
 #if CONFIG_DAALA_EC
-      read_intra_mode(r, cm->fc->uv_mode_cdf[y_mode]);
+      read_intra_mode(r, tile_ctx->uv_mode_cdf[y_mode]);
 #else
       read_intra_mode(r, cm->fc->uv_mode_prob[y_mode]);
 #endif
@@ -132,6 +144,13 @@ static PREDICTION_MODE read_inter_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
                                        MB_MODE_INFO *mbmi,
 #endif
                                        aom_reader *r, int16_t ctx) {
+#if CONFIG_EC_ADAPT
+  (void)cm;
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
+
 #if CONFIG_REF_MV
   FRAME_COUNTS *counts = xd->counts;
   int16_t mode_ctx = ctx & NEWMV_CTX_MASK;
@@ -192,7 +211,7 @@ static PREDICTION_MODE read_inter_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
 #else
 #if CONFIG_DAALA_EC
   const int mode = av1_inter_mode_inv[aom_read_symbol(
-      r, cm->fc->inter_mode_cdf[ctx], INTER_MODES, ACCT_STR)];
+      r, tile_ctx->inter_mode_cdf[ctx], INTER_MODES, ACCT_STR)];
 #else
   const int mode = aom_read_tree(r, av1_inter_mode_tree,
                                  cm->fc->inter_mode_probs[ctx], ACCT_STR);
@@ -452,7 +471,12 @@ static int read_intra_segment_id(AV1_COMMON *const cm, MACROBLOCKD *const xd,
                                  aom_reader *r) {
   struct segmentation *const seg = &cm->seg;
   FRAME_COUNTS *counts = xd->counts;
-  struct segmentation_probs *const segp = &cm->fc->seg;
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#else
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
+  struct segmentation_probs *const segp = &tile_ctx->seg;
   int segment_id;
 
   if (!seg->enabled) return 0;  // Default for disabled segmentation
@@ -482,7 +506,12 @@ static int read_inter_segment_id(AV1_COMMON *const cm, MACROBLOCKD *const xd,
                                  int mi_row, int mi_col, aom_reader *r) {
   struct segmentation *const seg = &cm->seg;
   FRAME_COUNTS *counts = xd->counts;
-  struct segmentation_probs *const segp = &cm->fc->seg;
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#else
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
+  struct segmentation_probs *const segp = &tile_ctx->seg;
   MB_MODE_INFO *const mbmi = &xd->mi[0]->mbmi;
   int predicted_segment_id, segment_id;
   const int mi_offset = mi_row * cm->mi_cols + mi_col;
@@ -680,6 +709,12 @@ static void read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
 #else
   const TX_SIZE tx_size = mbmi->tx_size;
 #endif
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
+
   if (!FIXED_TX_TYPE) {
 #if CONFIG_EXT_TX
     if (get_ext_tx_types(tx_size, mbmi->sb_type, inter_block) > 1 &&
@@ -723,7 +758,7 @@ static void read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
       if (inter_block) {
 #if CONFIG_DAALA_EC
         mbmi->tx_type = av1_ext_tx_inv[aom_read_symbol(
-            r, cm->fc->inter_ext_tx_cdf[tx_size], TX_TYPES, ACCT_STR)];
+            r, tile_ctx->inter_ext_tx_cdf[tx_size], TX_TYPES, ACCT_STR)];
 #else
         mbmi->tx_type = aom_read_tree(
             r, av1_ext_tx_tree, cm->fc->inter_ext_tx_prob[tx_size], ACCT_STR);
@@ -733,7 +768,7 @@ static void read_tx_type(const AV1_COMMON *const cm, MACROBLOCKD *xd,
         const TX_TYPE tx_type_nom = intra_mode_to_tx_type_context[mbmi->mode];
 #if CONFIG_DAALA_EC
         mbmi->tx_type = av1_ext_tx_inv[aom_read_symbol(
-            r, cm->fc->intra_ext_tx_cdf[tx_size][tx_type_nom], TX_TYPES,
+            r, tile_ctx->intra_ext_tx_cdf[tx_size][tx_type_nom], TX_TYPES,
             ACCT_STR)];
 #else
         mbmi->tx_type = aom_read_tree(
@@ -766,6 +801,12 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
   const int x_mis = AOMMIN(cm->mi_cols - mi_col, bw);
   const int y_mis = AOMMIN(cm->mi_rows - mi_row, bh);
 
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
+
   mbmi->segment_id = read_intra_segment_id(cm, xd, mi_offset, x_mis, y_mis, r);
   mbmi->skip = read_skip(cm, xd, mbmi->segment_id, r);
 
@@ -787,7 +828,8 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
       for (i = 0; i < 4; ++i)
         mi->bmi[i].as_mode =
 #if CONFIG_DAALA_EC
-            read_intra_mode(r, get_y_mode_cdf(cm, mi, above_mi, left_mi, i));
+            read_intra_mode(r,
+                            get_y_mode_cdf(tile_ctx, mi, above_mi, left_mi, i));
 #else
             read_intra_mode(r, get_y_mode_probs(cm, mi, above_mi, left_mi, i));
 #endif
@@ -796,13 +838,15 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
     case BLOCK_4X8:
       mi->bmi[0].as_mode = mi->bmi[2].as_mode =
 #if CONFIG_DAALA_EC
-          read_intra_mode(r, get_y_mode_cdf(cm, mi, above_mi, left_mi, 0));
+          read_intra_mode(r,
+                          get_y_mode_cdf(tile_ctx, mi, above_mi, left_mi, 0));
 #else
           read_intra_mode(r, get_y_mode_probs(cm, mi, above_mi, left_mi, 0));
 #endif
       mi->bmi[1].as_mode = mi->bmi[3].as_mode = mbmi->mode =
 #if CONFIG_DAALA_EC
-          read_intra_mode(r, get_y_mode_cdf(cm, mi, above_mi, left_mi, 1));
+          read_intra_mode(r,
+                          get_y_mode_cdf(tile_ctx, mi, above_mi, left_mi, 1));
 #else
           read_intra_mode(r, get_y_mode_probs(cm, mi, above_mi, left_mi, 1));
 #endif
@@ -810,13 +854,15 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
     case BLOCK_8X4:
       mi->bmi[0].as_mode = mi->bmi[1].as_mode =
 #if CONFIG_DAALA_EC
-          read_intra_mode(r, get_y_mode_cdf(cm, mi, above_mi, left_mi, 0));
+          read_intra_mode(r,
+                          get_y_mode_cdf(tile_ctx, mi, above_mi, left_mi, 0));
 #else
           read_intra_mode(r, get_y_mode_probs(cm, mi, above_mi, left_mi, 0));
 #endif
       mi->bmi[2].as_mode = mi->bmi[3].as_mode = mbmi->mode =
 #if CONFIG_DAALA_EC
-          read_intra_mode(r, get_y_mode_cdf(cm, mi, above_mi, left_mi, 2));
+          read_intra_mode(r,
+                          get_y_mode_cdf(tile_ctx, mi, above_mi, left_mi, 2));
 #else
           read_intra_mode(r, get_y_mode_probs(cm, mi, above_mi, left_mi, 2));
 #endif
@@ -824,7 +870,8 @@ static void read_intra_frame_mode_info(AV1_COMMON *const cm,
     default:
       mbmi->mode =
 #if CONFIG_DAALA_EC
-          read_intra_mode(r, get_y_mode_cdf(cm, mi, above_mi, left_mi, 0));
+          read_intra_mode(r,
+                          get_y_mode_cdf(tile_ctx, mi, above_mi, left_mi, 0));
 #else
           read_intra_mode(r, get_y_mode_probs(cm, mi, above_mi, left_mi, 0));
 #endif
@@ -1040,6 +1087,11 @@ static INLINE InterpFilter read_interp_filter(AV1_COMMON *const cm,
                                               int dir,
 #endif
                                               aom_reader *r) {
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
 #if CONFIG_EXT_INTERP
   if (!av1_is_interp_needed(xd)) return EIGHTTAP_REGULAR;
 #endif
@@ -1055,7 +1107,7 @@ static INLINE InterpFilter read_interp_filter(AV1_COMMON *const cm,
 #if CONFIG_DAALA_EC
     const InterpFilter type =
         (InterpFilter)av1_switchable_interp_inv[aom_read_symbol(
-            r, cm->fc->switchable_interp_cdf[ctx], SWITCHABLE_FILTERS,
+            r, tile_ctx->switchable_interp_cdf[ctx], SWITCHABLE_FILTERS,
             ACCT_STR)];
 #else
     const InterpFilter type = (InterpFilter)aom_read_tree(
@@ -1136,6 +1188,11 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
   (void)block;
 #endif
   (void)ref_frame;
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#else
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
 
   switch (mode) {
 #if CONFIG_EXT_INTER
@@ -1154,10 +1211,10 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
                         mbmi->ref_mv_idx);
         nmv_context_counts *const mv_counts =
             counts ? &counts->mv[nmv_ctx] : NULL;
-        read_mv(r, &mv[i].as_mv, &ref_mv[i].as_mv, &cm->fc->nmvc[nmv_ctx],
+        read_mv(r, &mv[i].as_mv, &ref_mv[i].as_mv, &tile_ctx->nmvc[nmv_ctx],
                 mv_counts, allow_hp);
 #else
-        read_mv(r, &mv[i].as_mv, &ref_mv[i].as_mv, &cm->fc->nmvc, mv_counts,
+        read_mv(r, &mv[i].as_mv, &ref_mv[i].as_mv, &tile_ctx->nmvc, mv_counts,
                 allow_hp);
 #endif
         ret = ret && is_mv_valid(&mv[i].as_mv);
@@ -1221,10 +1278,10 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
                         mbmi->ref_mv_idx);
         nmv_context_counts *const mv_counts =
             counts ? &counts->mv[nmv_ctx] : NULL;
-        read_mv(r, &mv[i].as_mv, &ref_mv[i].as_mv, &cm->fc->nmvc[nmv_ctx],
+        read_mv(r, &mv[i].as_mv, &ref_mv[i].as_mv, &tile_ctx->nmvc[nmv_ctx],
                 mv_counts, allow_hp);
 #else
-        read_mv(r, &mv[i].as_mv, &ref_mv[i].as_mv, &cm->fc->nmvc, mv_counts,
+        read_mv(r, &mv[i].as_mv, &ref_mv[i].as_mv, &tile_ctx->nmvc, mv_counts,
                 allow_hp);
 #endif
         ret = ret && is_mv_valid(&mv[i].as_mv);
@@ -1263,11 +1320,11 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
                                 xd->ref_mv_stack[rf_type], 0, mbmi->ref_mv_idx);
       nmv_context_counts *const mv_counts =
           counts ? &counts->mv[nmv_ctx] : NULL;
-      read_mv(r, &mv[0].as_mv, &ref_mv[0].as_mv, &cm->fc->nmvc[nmv_ctx],
+      read_mv(r, &mv[0].as_mv, &ref_mv[0].as_mv, &tile_ctx->nmvc[nmv_ctx],
               mv_counts, allow_hp);
 #else
       nmv_context_counts *const mv_counts = counts ? &counts->mv : NULL;
-      read_mv(r, &mv[0].as_mv, &ref_mv[0].as_mv, &cm->fc->nmvc, mv_counts,
+      read_mv(r, &mv[0].as_mv, &ref_mv[0].as_mv, &tile_ctx->nmvc, mv_counts,
               allow_hp);
 #endif
       assert(is_compound);
@@ -1284,12 +1341,12 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
       nmv_context_counts *const mv_counts =
           counts ? &counts->mv[nmv_ctx] : NULL;
       mv[0].as_int = nearest_mv[0].as_int;
-      read_mv(r, &mv[1].as_mv, &ref_mv[1].as_mv, &cm->fc->nmvc[nmv_ctx],
+      read_mv(r, &mv[1].as_mv, &ref_mv[1].as_mv, &tile_ctx->nmvc[nmv_ctx],
               mv_counts, allow_hp);
 #else
       nmv_context_counts *const mv_counts = counts ? &counts->mv : NULL;
       mv[0].as_int = nearest_mv[0].as_int;
-      read_mv(r, &mv[1].as_mv, &ref_mv[1].as_mv, &cm->fc->nmvc, mv_counts,
+      read_mv(r, &mv[1].as_mv, &ref_mv[1].as_mv, &tile_ctx->nmvc, mv_counts,
               allow_hp);
 #endif
       assert(is_compound);
@@ -1305,12 +1362,12 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
       nmv_context_counts *const mv_counts =
           counts ? &counts->mv[nmv_ctx] : NULL;
       mv[0].as_int = near_mv[0].as_int;
-      read_mv(r, &mv[1].as_mv, &ref_mv[1].as_mv, &cm->fc->nmvc[nmv_ctx],
+      read_mv(r, &mv[1].as_mv, &ref_mv[1].as_mv, &tile_ctx->nmvc[nmv_ctx],
               mv_counts, allow_hp);
 #else
       nmv_context_counts *const mv_counts = counts ? &counts->mv : NULL;
       mv[0].as_int = near_mv[0].as_int;
-      read_mv(r, &mv[1].as_mv, &ref_mv[1].as_mv, &cm->fc->nmvc, mv_counts,
+      read_mv(r, &mv[1].as_mv, &ref_mv[1].as_mv, &tile_ctx->nmvc, mv_counts,
               allow_hp);
 #endif
       assert(is_compound);
@@ -1326,11 +1383,11 @@ static INLINE int assign_mv(AV1_COMMON *cm, MACROBLOCKD *xd,
                                 xd->ref_mv_stack[rf_type], 0, mbmi->ref_mv_idx);
       nmv_context_counts *const mv_counts =
           counts ? &counts->mv[nmv_ctx] : NULL;
-      read_mv(r, &mv[0].as_mv, &ref_mv[0].as_mv, &cm->fc->nmvc[nmv_ctx],
+      read_mv(r, &mv[0].as_mv, &ref_mv[0].as_mv, &tile_ctx->nmvc[nmv_ctx],
               mv_counts, allow_hp);
 #else
       nmv_context_counts *const mv_counts = counts ? &counts->mv : NULL;
-      read_mv(r, &mv[0].as_mv, &ref_mv[0].as_mv, &cm->fc->nmvc, mv_counts,
+      read_mv(r, &mv[0].as_mv, &ref_mv[0].as_mv, &tile_ctx->nmvc, mv_counts,
               allow_hp);
 #endif
       assert(is_compound);
