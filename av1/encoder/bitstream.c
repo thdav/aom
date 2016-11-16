@@ -205,7 +205,7 @@ static void write_interintra_mode(aom_writer *w, INTERINTRA_MODE mode,
 }
 #endif  // CONFIG_EXT_INTER
 
-static void write_inter_mode(AV1_COMMON *cm, aom_writer *w,
+static void write_inter_mode(FRAME_CONTEXT *tile_ctx, aom_writer *w,
                              PREDICTION_MODE mode,
 #if CONFIG_REF_MV && CONFIG_EXT_INTER
                              int is_compound,
@@ -213,12 +213,12 @@ static void write_inter_mode(AV1_COMMON *cm, aom_writer *w,
                              const int16_t mode_ctx) {
 #if CONFIG_REF_MV
   const int16_t newmv_ctx = mode_ctx & NEWMV_CTX_MASK;
-  const aom_prob newmv_prob = cm->fc->newmv_prob[newmv_ctx];
+  const aom_prob newmv_prob = tile_ctx->newmv_prob[newmv_ctx];
 #if CONFIG_EXT_INTER
   aom_write(w, mode != NEWMV && mode != NEWFROMNEARMV, newmv_prob);
 
   if (!is_compound && (mode == NEWMV || mode == NEWFROMNEARMV))
-    aom_write(w, mode == NEWFROMNEARMV, cm->fc->new2mv_prob);
+    aom_write(w, mode == NEWFROMNEARMV, tile_ctx->new2mv_prob);
 
   if (mode != NEWMV && mode != NEWFROMNEARMV) {
 #else
@@ -227,7 +227,7 @@ static void write_inter_mode(AV1_COMMON *cm, aom_writer *w,
   if (mode != NEWMV) {
 #endif  // CONFIG_EXT_INTER
     const int16_t zeromv_ctx = (mode_ctx >> ZEROMV_OFFSET) & ZEROMV_CTX_MASK;
-    const aom_prob zeromv_prob = cm->fc->zeromv_prob[zeromv_ctx];
+    const aom_prob zeromv_prob = tile_ctx->zeromv_prob[zeromv_ctx];
 
     if (mode_ctx & (1 << ALL_ZERO_FLAG_OFFSET)) {
       assert(mode == ZEROMV);
@@ -244,7 +244,7 @@ static void write_inter_mode(AV1_COMMON *cm, aom_writer *w,
       if (mode_ctx & (1 << SKIP_NEARMV_OFFSET)) refmv_ctx = 7;
       if (mode_ctx & (1 << SKIP_NEARESTMV_SUB8X8_OFFSET)) refmv_ctx = 8;
 
-      refmv_prob = cm->fc->refmv_prob[refmv_ctx];
+      refmv_prob = tile_ctx->refmv_prob[refmv_ctx];
       aom_write(w, mode != NEARESTMV, refmv_prob);
     }
   }
@@ -252,10 +252,10 @@ static void write_inter_mode(AV1_COMMON *cm, aom_writer *w,
   assert(is_inter_mode(mode));
 #if CONFIG_DAALA_EC
   aom_write_symbol(w, av1_inter_mode_ind[INTER_OFFSET(mode)],
-                   cm->fc->inter_mode_cdf[mode_ctx], INTER_MODES);
+                   tile_ctx->inter_mode_cdf[mode_ctx], INTER_MODES);
 #else
   {
-    const aom_prob *const inter_probs = cm->fc->inter_mode_probs[mode_ctx];
+    const aom_prob *const inter_probs = tile_ctx->inter_mode_probs[mode_ctx];
     av1_write_token(w, av1_inter_mode_tree, inter_probs,
                     &inter_mode_encodings[INTER_OFFSET(mode)]);
   }
@@ -1038,6 +1038,12 @@ static void write_switchable_interp_filter(AV1_COMP *cpi, const MACROBLOCKD *xd,
 #if CONFIG_DUAL_FILTER
   int dir;
 #endif
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
+
   if (cm->interp_filter == SWITCHABLE) {
 #if CONFIG_EXT_INTERP
 #if CONFIG_DUAL_FILTER
@@ -1074,7 +1080,8 @@ static void write_switchable_interp_filter(AV1_COMP *cpi, const MACROBLOCKD *xd,
       const int ctx = av1_get_pred_context_switchable_interp(xd);
 #if CONFIG_DAALA_EC
       aom_write_symbol(w, av1_switchable_interp_ind[mbmi->interp_filter],
-                       cm->fc->switchable_interp_cdf[ctx], SWITCHABLE_FILTERS);
+                       tile_ctx->switchable_interp_cdf[ctx],
+                       SWITCHABLE_FILTERS);
 #else
       av1_write_token(w, av1_switchable_interp_tree,
                       cm->fc->switchable_interp_prob[ctx],
@@ -1140,6 +1147,9 @@ static void write_tx_type(const AV1_COMMON *const cm,
 #if CONFIG_SUPERTX
                           const int supertx_enabled,
 #endif
+#if CONFIG_EC_ADAPT
+                          MACROBLOCKD *xd,
+#endif
                           aom_writer *w) {
   const int is_inter = is_inter_block(mbmi);
 #if CONFIG_VAR_TX
@@ -1147,6 +1157,12 @@ static void write_tx_type(const AV1_COMMON *const cm,
 #else
   const TX_SIZE tx_size = mbmi->tx_size;
 #endif
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
+
   if (!FIXED_TX_TYPE) {
 #if CONFIG_EXT_TX
     const BLOCK_SIZE bsize = mbmi->sb_type;
@@ -1180,7 +1196,7 @@ static void write_tx_type(const AV1_COMMON *const cm,
       if (is_inter) {
 #if CONFIG_DAALA_EC
         aom_write_symbol(w, av1_ext_tx_ind[mbmi->tx_type],
-                         cm->fc->inter_ext_tx_cdf[tx_size], TX_TYPES);
+                         tile_ctx->inter_ext_tx_cdf[tx_size], TX_TYPES);
 #else
         av1_write_token(w, av1_ext_tx_tree, cm->fc->inter_ext_tx_prob[tx_size],
                         &ext_tx_encodings[mbmi->tx_type]);
@@ -1189,8 +1205,9 @@ static void write_tx_type(const AV1_COMMON *const cm,
 #if CONFIG_DAALA_EC
         aom_write_symbol(
             w, av1_ext_tx_ind[mbmi->tx_type],
-            cm->fc->intra_ext_tx_cdf[tx_size]
-                                    [intra_mode_to_tx_type_context[mbmi->mode]],
+            tile_ctx
+                ->intra_ext_tx_cdf[tx_size]
+                                  [intra_mode_to_tx_type_context[mbmi->mode]],
             TX_TYPES);
 #else
         av1_write_token(
@@ -1212,16 +1229,16 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
 #endif
                                 aom_writer *w) {
   AV1_COMMON *const cm = &cpi->common;
-#if !CONFIG_REF_MV
-  nmv_context *nmvc = &cm->fc->nmvc;
+  MACROBLOCK *x = &cpi->td.mb;
+  MACROBLOCKD *xd = &x->e_mbd;
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#else
+  FRAME_CONTEXT *tile_ctx = cm->fc;
 #endif
 
-#if CONFIG_DELTA_Q
-  MACROBLOCK *const x = &cpi->td.mb;
-  MACROBLOCKD *const xd = &x->e_mbd;
-#else
-  const MACROBLOCK *x = &cpi->td.mb;
-  const MACROBLOCKD *xd = &x->e_mbd;
+#if !CONFIG_REF_MV
+  nmv_context *nmvc = &tile_ctx->nmvc;
 #endif
   const struct segmentation *const seg = &cm->seg;
   struct segmentation_probs *const segp = &cm->fc->seg;
@@ -1323,7 +1340,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
     if (bsize >= BLOCK_8X8) {
 #if CONFIG_DAALA_EC
       aom_write_symbol(w, av1_intra_mode_ind[mode],
-                       cm->fc->y_mode_cdf[size_group_lookup[bsize]],
+                       tile_ctx->y_mode_cdf[size_group_lookup[bsize]],
                        INTRA_MODES);
 #else
       write_intra_mode(w, mode, cm->fc->y_mode_prob[size_group_lookup[bsize]]);
@@ -1336,8 +1353,8 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
         for (idx = 0; idx < 2; idx += num_4x4_w) {
           const PREDICTION_MODE b_mode = mi->bmi[idy * 2 + idx].as_mode;
 #if CONFIG_DAALA_EC
-          aom_write_symbol(w, av1_intra_mode_ind[b_mode], cm->fc->y_mode_cdf[0],
-                           INTRA_MODES);
+          aom_write_symbol(w, av1_intra_mode_ind[b_mode],
+                           tile_ctx->y_mode_cdf[0], INTRA_MODES);
 #else
           write_intra_mode(w, b_mode, cm->fc->y_mode_prob[0]);
 #endif
@@ -1346,7 +1363,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
     }
 #if CONFIG_DAALA_EC
     aom_write_symbol(w, av1_intra_mode_ind[mbmi->uv_mode],
-                     cm->fc->uv_mode_cdf[mode], INTRA_MODES);
+                     tile_ctx->uv_mode_cdf[mode], INTRA_MODES);
 #else
     write_intra_mode(w, mbmi->uv_mode, cm->fc->uv_mode_prob[mode]);
 #endif
@@ -1382,7 +1399,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
           write_inter_compound_mode(cm, w, mode, mode_ctx);
         else if (is_inter_singleref_mode(mode))
 #endif  // CONFIG_EXT_INTER
-          write_inter_mode(cm, w, mode,
+          write_inter_mode(tile_ctx, w, mode,
 #if CONFIG_REF_MV && CONFIG_EXT_INTER
                            is_compound,
 #endif  // CONFIG_REF_MV && CONFIG_EXT_INTER
@@ -1419,7 +1436,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
             write_inter_compound_mode(cm, w, b_mode, mode_ctx);
           else if (is_inter_singleref_mode(b_mode))
 #endif  // CONFIG_EXT_INTER
-            write_inter_mode(cm, w, b_mode,
+            write_inter_mode(tile_ctx, w, b_mode,
 #if CONFIG_REF_MV && CONFIG_EXT_INTER
                              has_second_ref(mbmi),
 #endif  // CONFIG_REF_MV && CONFIG_EXT_INTER
@@ -1437,7 +1454,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
               int nmv_ctx = av1_nmv_ctx(mbmi_ext->ref_mv_count[rf_type],
                                         mbmi_ext->ref_mv_stack[rf_type], ref,
                                         mbmi->ref_mv_idx);
-              nmv_context *nmvc = &cm->fc->nmvc[nmv_ctx];
+              nmv_context *nmvc = &tile_ctx->nmvc[nmv_ctx];
 #endif
               av1_encode_mv(cpi, w, &mi->bmi[j].as_mv[ref].as_mv,
 #if CONFIG_EXT_INTER
@@ -1462,7 +1479,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
             int nmv_ctx = av1_nmv_ctx(mbmi_ext->ref_mv_count[rf_type],
                                       mbmi_ext->ref_mv_stack[rf_type], 1,
                                       mbmi->ref_mv_idx);
-            nmv_context *nmvc = &cm->fc->nmvc[nmv_ctx];
+            nmv_context *nmvc = &tile_ctx->nmvc[nmv_ctx];
 #endif
             av1_encode_mv(cpi, w, &mi->bmi[j].as_mv[1].as_mv,
                           &mi->bmi[j].ref_mv[1].as_mv,
@@ -1476,7 +1493,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
             int nmv_ctx = av1_nmv_ctx(mbmi_ext->ref_mv_count[rf_type],
                                       mbmi_ext->ref_mv_stack[rf_type], 0,
                                       mbmi->ref_mv_idx);
-            nmv_context *nmvc = &cm->fc->nmvc[nmv_ctx];
+            nmv_context *nmvc = &tile_ctx->nmvc[nmv_ctx];
 #endif
             av1_encode_mv(cpi, w, &mi->bmi[j].as_mv[0].as_mv,
                           &mi->bmi[j].ref_mv[0].as_mv,
@@ -1501,7 +1518,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
           int nmv_ctx = av1_nmv_ctx(mbmi_ext->ref_mv_count[rf_type],
                                     mbmi_ext->ref_mv_stack[rf_type], ref,
                                     mbmi->ref_mv_idx);
-          nmv_context *nmvc = &cm->fc->nmvc[nmv_ctx];
+          nmv_context *nmvc = &tile_ctx->nmvc[nmv_ctx];
 #endif
           ref_mv = mbmi_ext->ref_mvs[mbmi->ref_frame[ref]][0];
 #if CONFIG_EXT_INTER
@@ -1527,7 +1544,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
         int nmv_ctx =
             av1_nmv_ctx(mbmi_ext->ref_mv_count[rf_type],
                         mbmi_ext->ref_mv_stack[rf_type], 1, mbmi->ref_mv_idx);
-        nmv_context *nmvc = &cm->fc->nmvc[nmv_ctx];
+        nmv_context *nmvc = &tile_ctx->nmvc[nmv_ctx];
 #endif
         av1_encode_mv(cpi, w, &mbmi->mv[1].as_mv,
                       &mbmi_ext->ref_mvs[mbmi->ref_frame[1]][0].as_mv,
@@ -1541,7 +1558,7 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
         int nmv_ctx =
             av1_nmv_ctx(mbmi_ext->ref_mv_count[rf_type],
                         mbmi_ext->ref_mv_stack[rf_type], 0, mbmi->ref_mv_idx);
-        nmv_context *nmvc = &cm->fc->nmvc[nmv_ctx];
+        nmv_context *nmvc = &tile_ctx->nmvc[nmv_ctx];
 #endif
         av1_encode_mv(cpi, w, &mbmi->mv[0].as_mv,
                       &mbmi_ext->ref_mvs[mbmi->ref_frame[0]][0].as_mv,
@@ -1624,24 +1641,27 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const MODE_INFO *mi,
 #if CONFIG_SUPERTX
                 supertx_enabled,
 #endif
+#if CONFIG_EC_ADAPT
+                xd,
+#endif
                 w);
 }
 
-#if CONFIG_DELTA_Q
 static void write_mb_modes_kf(AV1_COMMON *cm, MACROBLOCKD *xd,
                               MODE_INFO **mi_8x8, aom_writer *w) {
   int skip;
-#else
-static void write_mb_modes_kf(AV1_COMMON *cm, const MACROBLOCKD *xd,
-                              MODE_INFO **mi_8x8, aom_writer *w) {
-#endif
   const struct segmentation *const seg = &cm->seg;
-  struct segmentation_probs *const segp = &cm->fc->seg;
   const MODE_INFO *const mi = mi_8x8[0];
   const MODE_INFO *const above_mi = xd->above_mi;
   const MODE_INFO *const left_mi = xd->left_mi;
   const MB_MODE_INFO *const mbmi = &mi->mbmi;
   const BLOCK_SIZE bsize = mbmi->sb_type;
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
+  struct segmentation_probs *const segp = &cm->fc->seg;
 
   if (seg->update_map) write_segment_id(w, seg, segp, mbmi->segment_id);
 
@@ -1669,7 +1689,8 @@ static void write_mb_modes_kf(AV1_COMMON *cm, const MACROBLOCKD *xd,
   if (bsize >= BLOCK_8X8) {
 #if CONFIG_DAALA_EC
     aom_write_symbol(w, av1_intra_mode_ind[mbmi->mode],
-                     get_y_mode_cdf(cm, mi, above_mi, left_mi, 0), INTRA_MODES);
+                     get_y_mode_cdf(tile_ctx, mi, above_mi, left_mi, 0),
+                     INTRA_MODES);
 #else
     write_intra_mode(w, mbmi->mode,
                      get_y_mode_probs(cm, mi, above_mi, left_mi, 0));
@@ -1684,7 +1705,7 @@ static void write_mb_modes_kf(AV1_COMMON *cm, const MACROBLOCKD *xd,
         const int block = idy * 2 + idx;
 #if CONFIG_DAALA_EC
         aom_write_symbol(w, av1_intra_mode_ind[mi->bmi[block].as_mode],
-                         get_y_mode_cdf(cm, mi, above_mi, left_mi, block),
+                         get_y_mode_cdf(tile_ctx, mi, above_mi, left_mi, block),
                          INTRA_MODES);
 #else
         write_intra_mode(w, mi->bmi[block].as_mode,
@@ -1695,7 +1716,7 @@ static void write_mb_modes_kf(AV1_COMMON *cm, const MACROBLOCKD *xd,
   }
 #if CONFIG_DAALA_EC
   aom_write_symbol(w, av1_intra_mode_ind[mbmi->uv_mode],
-                   cm->fc->uv_mode_cdf[mbmi->mode], INTRA_MODES);
+                   tile_ctx->uv_mode_cdf[mbmi->mode], INTRA_MODES);
 #else
   write_intra_mode(w, mbmi->uv_mode, cm->fc->uv_mode_prob[mbmi->mode]);
 #endif
@@ -1713,6 +1734,9 @@ static void write_mb_modes_kf(AV1_COMMON *cm, const MACROBLOCKD *xd,
   write_tx_type(cm, mbmi,
 #if CONFIG_SUPERTX
                 0,
+#endif
+#if CONFIG_EC_ADAPT
+                xd,
 #endif
                 w);
 }
@@ -2074,6 +2098,11 @@ static void write_partition(const AV1_COMMON *const cm,
   const aom_prob *const probs = cm->fc->partition_prob[ctx];
   const int has_rows = (mi_row + hbs) < cm->mi_rows;
   const int has_cols = (mi_col + hbs) < cm->mi_cols;
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
 
   if (has_rows && has_cols) {
 #if CONFIG_EXT_PARTITION_TYPES
@@ -2083,8 +2112,8 @@ static void write_partition(const AV1_COMMON *const cm,
       av1_write_token(w, av1_ext_partition_tree, probs,
                       &ext_partition_encodings[p]);
 #else
-#if CONFIG_DAALA_EC
-    aom_write_symbol(w, p, cm->fc->partition_cdf[ctx], PARTITION_TYPES);
+#if CONFIG_EC_MULTISYMBOL && CONFIG_DAALA_EC
+    aom_write_symbol(w, p, tile_ctx->partition_cdf[ctx], PARTITION_TYPES);
 #else
     av1_write_token(w, av1_partition_tree, probs, &partition_encodings[p]);
 #endif
@@ -2132,7 +2161,6 @@ static void write_modes_sb(AV1_COMP *const cpi, const TileInfo *const tile,
 #endif
 
   if (mi_row >= cm->mi_rows || mi_col >= cm->mi_cols) return;
-
   write_partition(cm, xd, hbs, mi_row, mi_col, partition, bsize, w);
 #if CONFIG_SUPERTX
   mbmi = &cm->mi_grid_visible[mi_offset]->mbmi;
@@ -3531,7 +3559,7 @@ static uint32_t write_tiles(AV1_COMP *const cpi, uint8_t *const dst,
       const int tile_idx = tile_row * tile_cols + tile_col;
       TileBufferEnc *const buf = &tile_buffers[tile_row][tile_col];
       const int is_last_col = (tile_col == tile_cols - 1);
-#if CONFIG_PVQ
+#if CONFIG_PVQ || CONFIG_EC_ADAPT
       TileDataEnc *this_tile = &cpi->tile_data[tile_idx];
 #endif
       const TOKENEXTRA *tok = tok_buffers[tile_row][tile_col];
@@ -3612,6 +3640,10 @@ static uint32_t write_tiles(AV1_COMP *const cpi, uint8_t *const dst,
       // NOTE: This will not work with CONFIG_ANS turned on.
       od_adapt_ctx_reset(&cpi->td.mb.daala_enc.state.adapt, 0);
       cpi->td.mb.pvq_q = &this_tile->pvq_q;
+#elif CONFIG_EC_ADAPT
+      // Initialise tile context from the frame context
+      this_tile->tctx = *cm->fc;
+      cpi->td.mb.e_mbd.tile_ctx = &this_tile->tctx;
 #endif
       write_modes(cpi, &tile_info, &mode_bc, &tok, tok_end);
       assert(tok == tok_end);
@@ -4108,7 +4140,7 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
   if (frame_is_intra_only(cm)) {
     av1_copy(cm->kf_y_prob, av1_kf_y_mode_prob);
 #if CONFIG_DAALA_EC
-    av1_copy(cm->kf_y_cdf, av1_kf_y_mode_cdf);
+    av1_copy(cm->fc->kf_y_cdf, av1_kf_y_mode_cdf);
 #endif
 
 #if !CONFIG_EC_ADAPT

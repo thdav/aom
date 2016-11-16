@@ -459,7 +459,11 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
   aom_prob(*const coef_probs)[COEFF_CONTEXTS][UNCONSTRAINED_NODES] =
       cpi->common.fc->coef_probs[txsize_sqr_map[tx_size]][type][ref];
 #endif  // CONFIG_ENTROPY
-#if CONFIG_EC_MULTISYMBOL
+#if CONFIG_EC_ADAPT  // use per-tile context
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+  aom_cdf_prob(*const coef_cdfs)[COEFF_CONTEXTS][ENTROPY_TOKENS] =
+      tile_ctx->coef_cdfs[tx_size][type][ref];
+#elif CONFIG_EC_MULTISYMBOL
   aom_cdf_prob(*const coef_cdfs)[COEFF_CONTEXTS][ENTROPY_TOKENS] =
       cpi->common.fc->coef_cdfs[tx_size][type][ref];
 #endif

@@ -1581,6 +1581,11 @@ static PARTITION_TYPE read_partition(AV1_COMMON *cm, MACROBLOCKD *xd,
   const aom_prob *const probs = cm->fc->partition_prob[ctx];
   FRAME_COUNTS *counts = xd->counts;
   PARTITION_TYPE p;
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *tile_ctx = cm->fc;
+#endif
 
   if (has_rows && has_cols)
 #if CONFIG_EXT_PARTITION_TYPES
@@ -1591,7 +1596,7 @@ static PARTITION_TYPE read_partition(AV1_COMMON *cm, MACROBLOCKD *xd,
                                         ACCT_STR);
 #else
 #if CONFIG_DAALA_EC
-    p = (PARTITION_TYPE)aom_read_symbol(r, cm->fc->partition_cdf[ctx],
+    p = (PARTITION_TYPE)aom_read_symbol(r, tile_ctx->partition_cdf[ctx],
                                         PARTITION_TYPES, ACCT_STR);
 #else
     p = (PARTITION_TYPE)aom_read_tree(r, av1_partition_tree, probs, ACCT_STR);
@@ -3106,6 +3111,10 @@ static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
               ? &cm->counts
               : NULL;
       av1_zero(td->dqcoeff);
+#if CONFIG_EC_ADAPT
+      // Initialise the tile context
+      td->tctx = *cm->fc;
+#endif
 #if CONFIG_PVQ
       av1_zero(td->pvq_ref_coeff);
 #endif
@@ -3132,6 +3141,11 @@ static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
 #if CONFIG_PVQ
       daala_dec_init(&td->xd.daala_dec, &td->bit_reader.ec);
 #endif
+#if CONFIG_EC_ADAPT
+      // Initialise the tile context
+      td->xd.tile_ctx = &td->tctx;
+#endif
+
 #if CONFIG_PALETTE
       td->xd.plane[0].color_index_map = td->color_index_map[0];
       td->xd.plane[1].color_index_map = td->color_index_map[1];
@@ -3470,6 +3484,7 @@ static const uint8_t *decode_tiles_mt(AV1Decoder *pbi, const uint8_t *data,
                              twd->dqcoeff);
 #if CONFIG_PVQ
         daala_dec_init(&twd->xd.daala_dec, &twd->bit_reader.ec);
+#elif CONFIG_EC_ADAPT
 #endif
 #if CONFIG_PALETTE
         twd->xd.plane[0].color_index_map = twd->color_index_map[0];
@@ -4165,8 +4180,8 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
 
   if (frame_is_intra_only(cm)) {
     av1_copy(cm->kf_y_prob, av1_kf_y_mode_prob);
-#if CONFIG_DAALA_EC
-    av1_copy(cm->kf_y_cdf, av1_kf_y_mode_cdf);
+#if CONFIG_EC_MULTISYMBOL
+    av1_copy(cm->fc->kf_y_cdf, av1_kf_y_mode_cdf);
 #endif
 #if !CONFIG_EC_ADAPT
     for (k = 0; k < INTRA_MODES; k++)
