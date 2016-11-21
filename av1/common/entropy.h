@@ -36,6 +36,7 @@ extern "C" {
 #define ZERO_TOKEN 0        // 0     Extra Bits 0+0
 #define ONE_TOKEN 1         // 1     Extra Bits 0+1
 #define TWO_TOKEN 2         // 2     Extra Bits 0+1
+#define TWO_TOKEN_PLUS 2    // 2     TWO_TOKEN or higher
 #define THREE_TOKEN 3       // 3     Extra Bits 0+1
 #define FOUR_TOKEN 4        // 4     Extra Bits 0+1
 #define CATEGORY1_TOKEN 5   // 5-6   Extra Bits 1+1
@@ -202,6 +203,7 @@ typedef aom_cdf_prob coeff_cdf_model[REF_TYPES][COEF_BANDS][COEFF_CONTEXTS]
                                     [ENTROPY_TOKENS];
 extern const aom_cdf_prob av1_pareto8_token_probs[COEFF_PROB_MODELS]
                                                  [ENTROPY_TOKENS - 2];
+extern const aom_cdf_prob av1_pareto8_tail_cdfs[COEFF_PROB_MODELS][ENTROPY_TOKENS - 3];
 struct frame_contexts;
 void av1_coef_pareto_cdfs(struct frame_contexts *fc);
 #endif  // CONFIG_EC_MULTISYMBOL
