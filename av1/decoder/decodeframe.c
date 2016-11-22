@@ -4124,7 +4124,9 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
   if (cm->tx_mode == TX_MODE_SELECT) read_tx_size_probs(fc, &r);
 
 #if !CONFIG_PVQ
+#if !CONFIG_EC_ADAPT
   read_coef_probs(fc, cm->tx_mode, &r);
+#endif
 
 #if CONFIG_VAR_TX
   for (k = 0; k < TXFM_PARTITION_CONTEXTS; ++k)
@@ -4299,6 +4301,10 @@ static void debug_check_frame_counts(const AV1_COMMON *const cm) {
   assert(!memcmp(cm->counts.coef, zero_counts.coef, sizeof(cm->counts.coef)));
   assert(!memcmp(cm->counts.eob_branch, zero_counts.eob_branch,
                  sizeof(cm->counts.eob_branch)));
+#if CONFIG_EC_MULTISYMBOL
+  assert(!memcmp(cm->counts.cbp_count, zero_counts.cbp_counts,
+                 sizeof(cm->counts.cbp_count)));
+#endif
   assert(!memcmp(cm->counts.switchable_interp, zero_counts.switchable_interp,
                  sizeof(cm->counts.switchable_interp)));
   assert(!memcmp(cm->counts.inter_mode, zero_counts.inter_mode,

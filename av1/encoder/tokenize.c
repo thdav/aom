@@ -357,24 +357,32 @@ static void set_entropy_context_b(int plane, int block, int blk_row,
   av1_set_contexts(xd, pd, tx_size, p->eobs[block] > 0, blk_col, blk_row);
 }
 
-static INLINE void add_token(TOKENEXTRA **t, const aom_prob *context_tree,
 #if CONFIG_EC_MULTISYMBOL
+static INLINE void add_token(TOKENEXTRA **t,
                              aom_cdf_prob (*tail_cdf)[ENTROPY_TOKENS],
                              aom_cdf_prob (*head_cdf)[ENTROPY_TOKENS],
-#endif  // CONFIG_EC_MULTISYMBOL
+                             int is_eob,
+                             int32_t extra, uint8_t token) {
+  (*t)->token = token;
+  (*t)->extra = extra;
+  (*t)->tail_cdf = tail_cdf;
+  (*t)->head_cdf = head_cdf;
+  (*t)->is_eob = is_eob;
+  (*t)++;
+}
+
+#else
+static INLINE void add_token(TOKENEXTRA **t, const aom_prob *context_tree,
                              int32_t extra, uint8_t token,
                              uint8_t skip_eob_node, unsigned int *counts) {
   (*t)->token = token;
   (*t)->extra = extra;
   (*t)->context_tree = context_tree;
-#if CONFIG_EC_MULTISYMBOL
-  (*t)->tail_cdf = tail_cdf;
-  (*t)->head_cdf = head_cdf;
-#endif  // CONFIG_EC_MULTISYMBOL
   (*t)->skip_eob_node = skip_eob_node;
   (*t)++;
   ++counts[token];
 }
+#endif
 
 static INLINE int get_tx_eob(const struct segmentation *seg, int segment_id,
                              TX_SIZE tx_size) {
@@ -467,10 +475,16 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
   FRAME_CONTEXT *tile_ctx = cpi->common.fc;
 #endif
 #if CONFIG_EC_MULTISYMBOL
+  unsigned int (*const cbp_count)[2] =
+      td->counts->cbp_count[txsize_sqr_map[tx_size]][type][ref];
+  unsigned int (*const eob1_count)[COEFF_CONTEXTS] =
+      td->counts->eob1_count[txsize_sqr_map[tx_size]][type][ref];
+  aom_prob *cbp_probs = cpi->common.fc->cbp_probs[txsize_sqr_map[tx_size]][type][ref];
   aom_cdf_prob(*const coef_tail_cdfs)[COEFF_CONTEXTS][ENTROPY_TOKENS] =
-      tile_ctx->coef_tail_cdfs[tx_size][type][ref];
+      tile_ctx->coef_tail_cdfs[txsize_sqr_map[tx_size]][type][ref];
   aom_cdf_prob(*const coef_head_cdfs)[COEFF_CONTEXTS][ENTROPY_TOKENS] =
-      tile_ctx->coef_head_cdfs[tx_size][type][ref];
+      tile_ctx->coef_head_cdfs[txsize_sqr_map[tx_size]][type][ref];
+  int is_eob;
 #endif
   unsigned int(*const eob_branch)[COEFF_CONTEXTS] =
       td->counts->eob_branch[txsize_sqr_map[tx_size]][type][ref];
@@ -487,28 +501,43 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
   c = 0;
 
 #if CONFIG_EC_MULTISYMBOL
-  while (c < eob) {
-    const int v = qcoeff[scan[c]];
-    eob_branch[band[c]][pt] += !skip_eob;
-
-    av1_get_token_extra(v, &token, &extra);
-
-    add_token(&t, coef_probs[band[c]][pt],
-        &coef_tail_cdfs[band[c]][pt],
+  if (eob==0)
+    add_token(&t, &coef_tail_cdfs[band[c]][pt],
         &coef_head_cdfs[band[c]][pt],
-        extra, (uint8_t)token, (uint8_t)skip_eob, counts[band[c]][pt]);
+        0, 0, BLOCK_Z_TOKEN);
 
-    token_cache[scan[c]] = av1_pt_energy_class[token];
+  ++cbp_count[pt][eob!=0];
+
+  while (c < eob) {
+    int v = qcoeff[scan[c]];
+
+    if (!v) {
+      add_token(&t,
+                &coef_tail_cdfs[band[c]][pt],
+                &coef_head_cdfs[band[c]][pt],
+                0, 0, ZERO_TOKEN);
+      ++counts[band[c]][pt][ZERO_TOKEN];
+      token_cache[scan[c]] = 0;
+    } else {
+      is_eob = (c+1 == eob);
+
+      av1_get_token_extra(v, &token, &extra);
+
+      add_token(&t,
+          &coef_tail_cdfs[band[c]][pt],
+          &coef_head_cdfs[band[c]][pt],
+          is_eob, extra, (uint8_t)token);
+
+      ++counts[band[c]][pt][token];
+      ++eob_branch[band[c]][pt];
+      counts[band[c]][pt][EOB_TOKEN] += is_eob;
+      eob1_count[band[c]][pt] += (is_eob && token == ONE_TOKEN);
+
+      token_cache[scan[c]] = av1_pt_energy_class[token];
+    }
+    if (c>0 && coef_head_cdfs[band[c]][pt][0]>1) abort();
     ++c;
     pt = get_coef_context(nb, token_cache, c);
-    skip_eob = (token == ZERO_TOKEN);
-  }
-  if (c < seg_eob) {
-    add_token(&t, coef_probs[band[c]][pt],
-              NULL,
-              NULL,
-              0, EOB_TOKEN, 0, counts[band[c]][pt]);
-    ++eob_branch[band[c]][pt];
   }
 #else
   while (c < eob) {

@@ -747,45 +747,46 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
     aom_tree_index index = 0;
     const av1_extra_bit *const extra_bits = &extra_bits_table[token];
 
-    if (!p->skip_eob_node)
-      aom_write_record(w, token != EOB_TOKEN, p->context_tree[0], token_stats);
+    if (token == BLOCK_Z_TOKEN) {
+        aom_write_symbol(w, 0, *p->head_cdf, 6);
+    } else if (token < EOB_TOKEN) {
+      int comb_symb = 2*AOMMIN(token,TWO_TOKEN) - p->is_eob + 1;
 
-    if (token != EOB_TOKEN) {
-      aom_write_symbol(w, AOMMIN(token,TWO_TOKEN), *p->head_cdf, 3);
+      aom_write_symbol(w, comb_symb, *p->head_cdf, 6);
       if (token > ONE_TOKEN) {
         aom_write_symbol(w, token - TWO_TOKEN, *p->tail_cdf,
             CATEGORY6_TOKEN + 1 - 2);
       }
-    }
 
-    if (extra_bits->base_val) {
-      const int bit_string = p->extra;
-      const int bit_string_length = extra_bits->len;  // Length of extra bits to
-                                                      // be written excluding
-                                                      // the sign bit.
-      int skip_bits = (extra_bits->base_val == CAT6_MIN_VAL)
-                          ? TX_SIZES - 1 - txsize_sqr_up_map[tx_size]
-                          : 0;
+      if (extra_bits->base_val) {
+        const int bit_string = p->extra;
+        const int bit_string_length = extra_bits->len;  // Length of extra bits to
+                                                        // be written excluding
+                                                        // the sign bit.
+        int skip_bits = (extra_bits->base_val == CAT6_MIN_VAL)
+          ? TX_SIZES - 1 - txsize_sqr_up_map[tx_size]
+          : 0;
 
-      if (bit_string_length > 0) {
-        const unsigned char *pb = extra_bits->prob;
-        const int value = bit_string >> 1;
-        const int num_bits = bit_string_length;  // number of bits in value
-        assert(num_bits > 0);
+        if (bit_string_length > 0) {
+          const unsigned char *pb = extra_bits->prob;
+          const int value = bit_string >> 1;
+          const int num_bits = bit_string_length;  // number of bits in value
+          assert(num_bits > 0);
 
-        for (index = 0; index < num_bits; ++index) {
-          const int shift = num_bits - index - 1;
-          const int bb = (value >> shift) & 1;
-          if (skip_bits) {
-            --skip_bits;
-            assert(!bb);
-          } else {
-            aom_write_record(w, bb, pb[index], token_stats);
+          for (index = 0; index < num_bits; ++index) {
+            const int shift = num_bits - index - 1;
+            const int bb = (value >> shift) & 1;
+            if (skip_bits) {
+              --skip_bits;
+              assert(!bb);
+            } else {
+              aom_write_record(w, bb, pb[index], token_stats);
+            }
           }
         }
-      }
 
-      aom_write_bit_record(w, bit_string & 1, token_stats);
+        aom_write_bit_record(w, bit_string & 1, token_stats);
+      }
     }
     ++p;
 
@@ -2535,11 +2536,7 @@ static void update_coef_probs_common(aom_writer *const bc, AV1_COMP *cpi,
                                      av1_coeff_probs_model *new_coef_probs) {
   av1_coeff_probs_model *old_coef_probs = cpi->common.fc->coef_probs[tx_size];
   const aom_prob upd = DIFF_UPDATE_PROB;
-#if CONFIG_EC_ADAPT
-  const int entropy_nodes_update = UNCONSTRAINED_NODES - 2;
-#else
   const int entropy_nodes_update = UNCONSTRAINED_NODES;
-#endif
   int i, j, k, l, t;
   int stepsize = cpi->sf.coeff_prob_appx_step;
 #if CONFIG_TILE_GROUPS
@@ -4152,8 +4149,10 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
 #endif  // CONFIG_LOOP_RESTORATION
   update_txfm_probs(cm, header_bc, counts);
 #if !CONFIG_PVQ
+#if !CONFIG_EC_ADAPT
   update_coef_probs(cpi, header_bc);
-#endif
+#endif // CONFIG_EC_ADAPT
+#endif // CONFIG_PVQ
 #if CONFIG_VAR_TX
   update_txfm_partition_probs(cm, header_bc, counts, probwt);
 #if CONFIG_EXT_TX && CONFIG_RECT_TX
