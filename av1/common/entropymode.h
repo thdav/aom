@@ -65,6 +65,8 @@ typedef struct frame_contexts {
 #if CONFIG_EC_MULTISYMBOL
   coeff_cdf_model coef_tail_cdfs[TX_SIZES][PLANE_TYPES];
   coeff_cdf_model coef_head_cdfs[TX_SIZES][PLANE_TYPES];
+  aom_prob cbp_probs[TX_SIZES][PLANE_TYPES][REF_TYPES][CBP_CONTEXTS];
+  aom_prob eob1_probs[TX_SIZES][PLANE_TYPES][REF_TYPES][COEFF_CONTEXTS];
 #endif  // CONFIG_EC_MULTISYMBOL
   aom_prob switchable_interp_prob[SWITCHABLE_FILTER_CONTEXTS]
                                  [SWITCHABLE_FILTERS - 1];
@@ -209,6 +211,12 @@ typedef struct FRAME_COUNTS {
   unsigned int non_zero_count_16X16[TX_TYPES][256];
   unsigned int non_zero_count_32X32[TX_TYPES][1024];
   unsigned int txb_count[TX_SIZES][TX_TYPES];
+#endif
+#if CONFIG_EC_MULTISYMBOL
+  // Count EOBs where the last value is 1
+  unsigned int eob1_count[TX_SIZES][PLANE_TYPES][REF_TYPES][COEF_BANDS]
+                         [COEFF_CONTEXTS];
+  av1_cbp_count_model cbp_count[TX_SIZES][PLANE_TYPES];
 #endif
 
 #if CONFIG_REF_MV

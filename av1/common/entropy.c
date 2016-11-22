@@ -3284,24 +3284,57 @@ void av1_model_to_full_probs(const aom_prob *model, aom_prob *full) {
 
 #if CONFIG_EC_MULTISYMBOL
 static void build_token_cdfs(const aom_prob *pdf_model,
+                             const aom_prob *cbp_model,
                              aom_cdf_prob cdf_tail[ENTROPY_TOKENS],
                              aom_cdf_prob cdf_head[ENTROPY_TOKENS]) {
-  int i, p,scale, sum = 0;
+  int i, ptmp, p[6],scaleNZ, scaleEOB_1, scaleEOB_2p, scaleNEOB_1, scaleNEOB_2p, sum = 0;
+  int scale_cbp;
 
   assert(pdf_model[2] != 0);
 
-  // Do the head (ZERO, ONE, TWO or more)
-  cdf_head[ZERO_TOKEN] = sum = (pdf_model[1]<<7);
-  scale = (1<<15) - cdf_head[ZERO_TOKEN];
-  p =AOMMAX(1,(scale*128*pdf_model[2]+(1<<14))>>15);
-  cdf_head[ONE_TOKEN] = cdf_head[ZERO_TOKEN] + p;
-  cdf_head[TWO_TOKEN_PLUS] = (1<<15);
+  /* Values are 1=BLOCK_ZERO 1=ZERO_TOKEN, 2=ONE_TOKEN_EOB
+     3=ONE_TOKEN_NEOB, 4=TWO_TOKEN_PLUS_EOB, 5=TWO_TOKEN_PLUS_NEOB
+     */
+  cdf_head[0] = p[0] = cbp_model == NULL ? 0 : ((*cbp_model)<<7) + 64;
+  scale_cbp = cbp_model == NULL ? 256 : (256-*cbp_model);
+  cdf_head[1+ZERO_TOKEN] = p[1] = (pdf_model[1]<<7) + 64;
+  scaleNZ = (1<<15) - cdf_head[1+ZERO_TOKEN];
+  scaleEOB_1 = (pdf_model[0] << 7) + 64;
+  // Lower probability of EOB for larger values
+  scaleEOB_2p = (pdf_model[0] << 6) + 64;
+  scaleNEOB_1 = (1<<15) - scaleEOB_1;
+  scaleNEOB_2p = (1<<15) - scaleEOB_2p;
+
+  ptmp = (pdf_model[2]<<7) + 64; // Scaled ONE_CONTEXT_NODE prob
+  ptmp = AOMMAX(1,AOMMIN(32767,(scaleNZ*ptmp +(1<<14)) >> 15));
+
+  p[1+ONE_TOKEN_EOB] = AOMMAX(1,AOMMIN(32767,(ptmp * scaleEOB_1 + (1<<14)) >> 15));
+  p[1+ONE_TOKEN_NEOB] = AOMMAX(1,AOMMIN(32767,(ptmp * scaleNEOB_1 + (1<<14)) >> 15));
+
+  ptmp = AOMMAX(1,AOMMIN(32767,(1<<15) - ptmp - p[1+ZERO_TOKEN]));
+
+  p[1+TWO_TOKEN_PLUS_EOB] = AOMMAX(1,AOMMIN(32767,(ptmp * scaleEOB_2p + (1<<14)) >> 15));
+  p[1+TWO_TOKEN_PLUS_NEOB] = AOMMAX(1,AOMMIN(32767,(ptmp * scaleNEOB_2p + (1<<14)) >> 15));
+
+  // Now use CBP to scale the values
+  for (i=1; i<5; ++i) {
+    p[i] = (scale_cbp * p[i] + 128 )>> 8;
+
+  }
+
+  for (i=1; i<5; ++i) {
+    cdf_head[i] = cdf_head[i-1] + p[i];
+  }
+  cdf_head[5] = (1<<15);
+  for (i=5; i>=1; --i) {
+    cdf_head[i-1] = AOMMIN(cdf_head[i-1],cdf_head[i]-1);
+  }
 
   // Do the tail
   sum = 0;
   for (i = 0; i < ENTROPY_TOKENS - 3; ++i) {
-    p = av1_pareto8_tail_probs[pdf_model[2] - 1][i];
-    cdf_tail[i] = sum += p;
+    ptmp = av1_pareto8_tail_probs[pdf_model[2] - 1][i];
+    cdf_tail[i] = sum += ptmp;
   }
 }
 
@@ -3312,10 +3345,12 @@ void av1_coef_pareto_cdfs(FRAME_CONTEXT *fc) {
     for (i = 0; i < PLANE_TYPES; ++i)
       for (j = 0; j < REF_TYPES; ++j)
         for (k = 0; k < COEF_BANDS; ++k)
-          for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l)
+          for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l) {
             build_token_cdfs(fc->coef_probs[t][i][j][k][l],
+                             k==0 ? &fc->cbp_probs[t][i][j][l] : NULL,
                              fc->coef_tail_cdfs[t][i][j][k][l],
                              fc->coef_head_cdfs[t][i][j][k][l]);
+          }
 }
 #endif  // CONFIG_EC_MULTISYMBOL
 
@@ -3334,6 +3369,7 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
   av1_copy(cm->fc->coef_probs[TX_32X32], default_coef_probs_32x32);
 #endif  // CONFIG_ENTROPY
 #if CONFIG_EC_MULTISYMBOL
+  av1_copy(cm->fc->cbp_probs, av1_default_cbp_probs);
   av1_coef_pareto_cdfs(cm->fc);
 #endif  // CONFIG_EC_MULTISYMBOL
 }
@@ -3360,6 +3396,11 @@ static void adapt_coef_probs(AV1_COMMON *cm, TX_SIZE tx_size,
   const unsigned int(*eob_counts)[REF_TYPES][COEF_BANDS][COEFF_CONTEXTS] =
       (const unsigned int(*)[REF_TYPES][COEF_BANDS]
                             [COEFF_CONTEXTS])cm->counts.eob_branch[tx_size];
+#if CONFIG_EC_MULTISYMBOL
+  const av1_cbp_probs_model *const pre_cbp_probs = pre_fc->cbp_probs[tx_size];
+  av1_cbp_probs_model *const cbp_probs = cm->fc->cbp_probs[tx_size];
+  const av1_cbp_count_model *const cbp_counts = (const av1_cbp_count_model *)&cm->counts.cbp_count[tx_size][0];
+#endif
   int i, j, k, l, m;
 
   for (i = 0; i < PLANE_TYPES; ++i)
@@ -3378,6 +3419,22 @@ static void adapt_coef_probs(AV1_COMMON *cm, TX_SIZE tx_size,
                 av1_merge_probs(pre_probs[i][j][k][l][m], branch_ct[m],
                                 count_sat, update_factor);
         }
+
+#if CONFIG_EC_MULTISYMBOL
+  for (i = 0; i < PLANE_TYPES; ++i) {
+    for (j = 0; j < REF_TYPES; ++j) {
+      for (k = 0; k < CBP_CONTEXTS; ++k) {
+          const int n0 = cbp_counts[i][j][k][0];
+          const int n1 = cbp_counts[i][j][k][1];
+          const unsigned int branch_ct[2] = {n0, n1};
+          cbp_probs[i][j][k] =
+              av1_merge_probs(pre_cbp_probs[i][j][k], branch_ct,
+                                count_sat, update_factor);
+        }
+    }
+  }
+#endif
+
 }
 
 void av1_adapt_coef_probs(AV1_COMMON *cm) {

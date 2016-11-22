@@ -36,7 +36,6 @@ extern "C" {
 #define ZERO_TOKEN 0        // 0     Extra Bits 0+0
 #define ONE_TOKEN 1         // 1     Extra Bits 0+1
 #define TWO_TOKEN 2         // 2     Extra Bits 0+1
-#define TWO_TOKEN_PLUS 2    // 2     TWO_TOKEN or higher
 #define THREE_TOKEN 3       // 3     Extra Bits 0+1
 #define FOUR_TOKEN 4        // 4     Extra Bits 0+1
 #define CATEGORY1_TOKEN 5   // 5-6   Extra Bits 1+1
@@ -46,7 +45,13 @@ extern "C" {
 #define CATEGORY5_TOKEN 9   // 35-66 Extra Bits 5+1
 #define CATEGORY6_TOKEN 10  // 67+   Extra Bits 14+1
 #define EOB_TOKEN 11        // EOB   Extra Bits 0+0
-
+#if CONFIG_EC_MULTISYMBOL
+#define BLOCK_Z_TOKEN  255  // block zero
+#define ONE_TOKEN_EOB 1
+#define ONE_TOKEN_NEOB 2
+#define TWO_TOKEN_PLUS_EOB 3
+#define TWO_TOKEN_PLUS_NEOB 4
+#endif
 #define ENTROPY_TOKENS 12
 
 #define ENTROPY_NODES 11
@@ -204,6 +209,8 @@ void av1_model_to_full_probs(const aom_prob *model, aom_prob *full);
 #if CONFIG_EC_MULTISYMBOL
 typedef aom_cdf_prob coeff_cdf_model[REF_TYPES][COEF_BANDS][COEFF_CONTEXTS]
                                     [ENTROPY_TOKENS];
+typedef aom_prob av1_cbp_probs_model[REF_TYPES][CBP_CONTEXTS];
+typedef unsigned int av1_cbp_count_model[REF_TYPES][CBP_CONTEXTS][2];
 extern const aom_cdf_prob av1_pareto8_token_probs[COEFF_PROB_MODELS]
                                                  [ENTROPY_TOKENS - 2];
 extern const aom_cdf_prob av1_pareto8_tail_cdfs[COEFF_PROB_MODELS][ENTROPY_TOKENS - 3];
