@@ -17,6 +17,7 @@
 
 #include "aom_ports/bitops.h"
 #include "aom_ports/mem.h"
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -136,6 +137,7 @@ void av1_indices_from_tree(int *ind, int *inv, int len,
 DECLARE_ALIGNED(16, extern const uint8_t, aom_norm[256]);
 
 #if CONFIG_EC_ADAPT
+#if 0
 static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
   const int rate = 4 + get_msb(nsymbs);
   int i, diff, tmp;
@@ -149,6 +151,20 @@ static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
     cdf[i] += diff;
   }
 }
+#else
+static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
+  const int rate = 4 + get_msb(nsymbs);
+  const int rate2 = 12-rate;
+  const int tmp0 = 1<<rate2;
+  int i,tmp = tmp0;
+  const int diff = ((32768 - (nsymbs<<rate2)) >> rate) << rate;
+
+  for (i = 0; i < nsymbs - 1; ++i, tmp += tmp0) {
+    tmp += (i==val ? diff : 0);
+    cdf[i] -= ((cdf[i] - tmp) >> rate);
+  }
+}
+#endif
 #endif
 
 #ifdef __cplusplus
