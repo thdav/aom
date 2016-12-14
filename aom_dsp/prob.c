@@ -205,6 +205,8 @@ int tree_to_cdf(const aom_tree_index *tree, const aom_prob *probs,
   for (i = 1; i < nsymbs; i++) {
     cdf[i] = cdf[i - 1] + cdf[i];
   }
+  // Store symbol count at the end of the CDF
+  cdf[nsymbs] = 0;
   return nsymbs;
 }
 

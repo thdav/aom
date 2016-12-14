@@ -359,8 +359,8 @@ static void set_entropy_context_b(int plane, int block, int blk_row,
 
 #if CONFIG_EC_MULTISYMBOL
 static INLINE void add_token(TOKENEXTRA **t,
-                             aom_cdf_prob (*tail_cdf)[ENTROPY_TOKENS],
-                             aom_cdf_prob (*head_cdf)[ENTROPY_TOKENS],
+                             aom_cdf_prob (*tail_cdf)[ENTROPY_TOKENS + 1],
+                             aom_cdf_prob (*head_cdf)[ENTROPY_TOKENS + 1],
                              int is_eob,
                              int32_t extra, uint8_t token) {
   (*t)->token = token;
@@ -480,9 +480,9 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
   unsigned int (*const eob1_count)[COEFF_CONTEXTS] =
       td->counts->eob1_count[txsize_sqr_map[tx_size]][type][ref];
   aom_prob *cbp_probs = cpi->common.fc->cbp_probs[txsize_sqr_map[tx_size]][type][ref];
-  aom_cdf_prob(*const coef_tail_cdfs)[COEFF_CONTEXTS][ENTROPY_TOKENS] =
+  aom_cdf_prob(*const coef_tail_cdfs)[COEFF_CONTEXTS][ENTROPY_TOKENS + 1] =
       tile_ctx->coef_tail_cdfs[txsize_sqr_map[tx_size]][type][ref];
-  aom_cdf_prob(*const coef_head_cdfs)[COEFF_CONTEXTS][ENTROPY_TOKENS] =
+  aom_cdf_prob(*const coef_head_cdfs)[COEFF_CONTEXTS][ENTROPY_TOKENS + 1] =
       tile_ctx->coef_head_cdfs[txsize_sqr_map[tx_size]][type][ref];
   int is_eob;
 #endif

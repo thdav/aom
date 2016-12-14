@@ -153,7 +153,9 @@ static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
 }
 #else
 static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
-  const int rate = 4 + get_msb(nsymbs);
+  // Store the number of symbols at the end of the CDF
+  const int count = cdf[nsymbs];
+  const int rate = (count < 32 ? 4 : 5) + get_msb(nsymbs);
   const int rate2 = 12-rate;
   const int tmp0 = 1<<rate2;
   int i,tmp = tmp0;
@@ -163,6 +165,7 @@ static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
     tmp += (i==val ? diff : 0);
     cdf[i] -= ((cdf[i] - tmp) >> rate);
   }
+  cdf[nsymbs]++;
 }
 #endif
 #endif
