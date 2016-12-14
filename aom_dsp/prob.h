@@ -162,6 +162,7 @@ static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
     cdf[i] += diff;
   }
 #endif
+  cdf[nsymbs]++;
 }
 #endif
 
