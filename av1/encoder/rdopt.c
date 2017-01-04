@@ -1104,6 +1104,11 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
   uint8_t token_cache[MAX_TX_SQUARE];
   int pt = coeff_ctx;
   int c, cost;
+#if CONFIG_NEW_TOKENSET
+  const int ref = is_inter_block(mbmi);
+  aom_prob *blockz_probs = cm->fc->blockzero_probs[txsize_sqr_map[tx_size]][type][ref];
+#endif
+
 #if CONFIG_AOM_HIGHBITDEPTH
   const int *cat6_high_cost = av1_get_high_cost_table(xd->bd);
 #else
@@ -1119,7 +1124,11 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
 
   if (eob == 0) {
     // single eob token
+#if CONFIG_NEW_TOKENSET
+    cost = av1_cost_bit(blockz_probs[pt], 0);
+#else
     cost = token_costs[0][0][pt][EOB_TOKEN];
+#endif
   } else {
     if (use_fast_coef_costing) {
       int band_left = *band_count++;
