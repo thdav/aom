@@ -3161,6 +3161,7 @@ static void get_tile_buffer(const uint8_t *const data_end,
     }
     *data += tile_size_bytes;
 
+
     if (size > (size_t)(data_end - *data))
       aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
                          "Truncated packet or corrupt tile size");
