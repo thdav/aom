@@ -947,13 +947,19 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
 #endif
     c = 0;
   } else {
+#if CONFIG_EC_MULTISYMBOL
+    cost = av1_cost_bit(cbp_probs[pt], 1);
+#else
+    cost = 0;
+#endif
+
     if (use_fast_coef_costing) {
       int band_left = *band_count++;
 
       // dc token
       int v = qcoeff[0];
       int16_t prev_t;
-      cost = av1_get_token_cost(v, &prev_t, cat6_high_cost);
+      cost += av1_get_token_cost(v, &prev_t, cat6_high_cost);
       cost += (*token_costs)[0][pt][prev_t];
 
       token_cache[0] = av1_pt_energy_class[prev_t];
@@ -966,7 +972,7 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
 
         v = qcoeff[rc];
         cost += av1_get_token_cost(v, &t, cat6_high_cost);
-        cost += (*token_costs)[!prev_t][!prev_t][t];
+        cost += (*token_costs)[!t][!prev_t][t];
         prev_t = t;
         if (!--band_left) {
           band_left = *band_count++;
@@ -974,23 +980,17 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
         }
       }
 
-      // eob token
-      if (band_left) cost += (*token_costs)[0][!prev_t][EOB_TOKEN];
-
     } else {  // !use_fast_coef_costing
       int band_left = *band_count++;
 
       // dc token
       int v = qcoeff[0];
       int16_t tok;
-      unsigned int(*tok_cost_ptr)[COEFF_CONTEXTS][ENTROPY_TOKENS];
-      cost = av1_get_token_cost(v, &tok, cat6_high_cost);
+      cost += av1_get_token_cost(v, &tok, cat6_high_cost);
       cost += (*token_costs)[0][pt][tok];
 
       token_cache[0] = av1_pt_energy_class[tok];
       ++token_costs;
-
-      tok_cost_ptr = &((*token_costs)[!tok]);
 
       // ac tokens
       for (c = 1; c < eob; c++) {
@@ -999,20 +999,14 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
         v = qcoeff[rc];
         cost += av1_get_token_cost(v, &tok, cat6_high_cost);
         pt = get_coef_context(nb, token_cache, c);
-        cost += (*tok_cost_ptr)[pt][tok];
+        cost += (*token_costs)[!tok][pt][tok];
         token_cache[rc] = av1_pt_energy_class[tok];
         if (!--band_left) {
           band_left = *band_count++;
           ++token_costs;
         }
-        tok_cost_ptr = &((*token_costs)[!tok]);
       }
 
-      // eob token
-      if (band_left) {
-        pt = get_coef_context(nb, token_cache, c);
-        cost += (*token_costs)[0][pt][EOB_TOKEN];
-      }
     }
   }
 
