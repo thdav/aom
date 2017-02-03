@@ -4144,6 +4144,7 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
   aom_start_encode(header_bc, data);
 #endif
 
+#if 0
 #if CONFIG_LOOP_RESTORATION
   encode_restoration(cm, header_bc);
 #endif  // CONFIG_LOOP_RESTORATION
@@ -4333,6 +4334,7 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
     write_global_motion(cpi, header_bc);
 #endif  // CONFIG_GLOBAL_MOTION
   }
+#endif
 #if CONFIG_EC_MULTISYMBOL
   av1_coef_pareto_cdfs(fc);
 #if CONFIG_REF_MV

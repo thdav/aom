@@ -4116,7 +4116,7 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
     aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
                        "Failed to allocate compressed header ANS decoder");
 #endif  // !CONFIG_ANS
-
+#if 0
 #if CONFIG_LOOP_RESTORATION
   decode_restoration(cm, &r);
 #endif
@@ -4267,6 +4267,7 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
     read_global_motion(cm, &r);
 #endif  // EC_ADAPT, DAALA_EC
   }
+#endif
 #if CONFIG_EC_MULTISYMBOL
   av1_coef_pareto_cdfs(fc);
 #if CONFIG_REF_MV
