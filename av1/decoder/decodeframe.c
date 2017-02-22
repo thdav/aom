@@ -4678,6 +4678,7 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
 #endif  // EC_ADAPT, DAALA_EC
   }
 #if CONFIG_EC_MULTISYMBOL
+#if !CONFIG_EC_ADAPT
 #if CONFIG_NEW_TOKENSET
   av1_coef_head_cdfs(fc);
 #endif
@@ -4691,6 +4692,7 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
 #if CONFIG_EC_MULTISYMBOL
   av1_set_mode_cdfs(cm);
 #endif
+#endif // !CONFIG_EC_ADAPT
 #endif
 
   return aom_reader_has_error(&r);
@@ -4807,6 +4809,15 @@ BITSTREAM_PROFILE av1_read_profile(struct aom_read_bit_buffer *rb) {
   if (profile > 2) profile += aom_rb_read_bit(rb);
   return (BITSTREAM_PROFILE)profile;
 }
+
+#if CONFIG_EC_ADAPT
+static void make_update_tile_list_dec(AV1Decoder* pbi, const int tile_rows, const int tile_cols, FRAME_CONTEXT *ec_ctxs[])
+{
+  int i;
+  for (i=0; i<tile_rows * tile_cols; ++i)
+    ec_ctxs[i] = &pbi->tile_data[i].tctx;
+}
+#endif
 
 void av1_decode_frame(AV1Decoder *pbi, const uint8_t *data,
                       const uint8_t *data_end, const uint8_t **p_data_end) {
@@ -4982,15 +4993,31 @@ void av1_decode_frame(AV1Decoder *pbi, const uint8_t *data,
 
   if (!xd->corrupted) {
     if (cm->refresh_frame_context == REFRESH_FRAME_CONTEXT_BACKWARD) {
+#if CONFIG_EC_ADAPT
+      FRAME_CONTEXT *tile_ctxs[MAX_TILE_ROWS*MAX_TILE_COLS];
+      make_update_tile_list_dec(pbi, cm->tile_rows, cm->tile_cols, tile_ctxs);
+#endif
+
 #if CONFIG_ENTROPY
       cm->partial_prob_update = 0;
 #endif  // CONFIG_ENTROPY
       av1_adapt_coef_probs(cm);
+#if CONFIG_EC_ADAPT
+      av1_average_tile_coef_cdfs(pbi->common.fc, tile_ctxs, cm->tile_rows*cm->tile_cols);
+#endif
       av1_adapt_intra_frame_probs(cm);
+#if CONFIG_EC_ADAPT
+      av1_average_tile_intra_cdfs(pbi->common.fc, tile_ctxs, cm->tile_rows*cm->tile_cols);
+#endif
 
       if (!frame_is_intra_only(cm)) {
         av1_adapt_inter_frame_probs(cm);
+#if CONFIG_EC_ADAPT
+        av1_average_tile_inter_cdfs(&pbi->common, pbi->common.fc, tile_ctxs, cm->tile_rows*cm->tile_cols);
+#endif
         av1_adapt_mv_probs(cm, cm->allow_high_precision_mv);
+        av1_average_tile_mv_cdfs(pbi->common.fc, tile_ctxs, cm->tile_rows*cm->tile_cols);
+
       }
     } else {
       debug_check_frame_counts(cm);

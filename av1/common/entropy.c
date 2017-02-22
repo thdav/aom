@@ -4925,6 +4925,36 @@ static void adapt_coef_probs(AV1_COMMON *cm, TX_SIZE tx_size,
 #endif
 }
 
+#if CONFIG_EC_ADAPT
+static void adapt_coef_cdfs(AV1_COMMON *cm, FRAME_CONTEXT* pre_fc, TX_SIZE tx_size, int type) {
+#if CONFIG_NEW_TOKENSET
+  coeff_cdf_model *cdf_head = &cm->fc->coef_head_cdfs[tx_size][type];
+  coeff_cdf_model *cdf_tail = &cm->fc->coef_tail_cdfs[tx_size][type];
+  coeff_cdf_model *pre_cdf_head = &pre_fc->coef_head_cdfs[tx_size][type];
+  coeff_cdf_model *pre_cdf_tail = &pre_fc->coef_tail_cdfs[tx_size][type];
+
+  av1_copy(*cdf_head, *pre_cdf_head);
+  av1_copy(*cdf_tail, *pre_cdf_tail);
+#else
+  coeff_cdf_model *token_cdf = &cm->fc->coef_cdfs[tx_size][type];
+  coeff_cdf_model *pre_token_cdf = &pre_fc->coef_cdfs[tx_size][type];
+
+  av1_copy(*token_cdf, *pre_token_cdf);
+#endif
+
+
+}
+
+void av1_adapt_coef_cdfs(AV1_COMMON *cm, FRAME_CONTEXT* pre_fc) {
+  TX_SIZE tx_size;
+  int t;
+
+  for (tx_size = 0; tx_size < TX_SIZES; tx_size++)
+    for (t = 0; t < PLANE_TYPES; t++)
+      adapt_coef_cdfs(cm, pre_fc, tx_size, t);
+}
+#endif
+
 void av1_adapt_coef_probs(AV1_COMMON *cm) {
   TX_SIZE tx_size;
   unsigned int count_sat, update_factor;
@@ -4978,3 +5008,163 @@ void av1_partial_adapt_probs(AV1_COMMON *cm, int mi_row, int mi_col) {
   }
 }
 #endif  // CONFIG_ENTROPY
+
+#if CONFIG_EC_ADAPT
+static void av1_average_cdf(aom_cdf_prob* cdf_ptr[], aom_cdf_prob *fc_cdf_ptr, int cdf_size, const int num_tiles)
+{
+  int i, j;
+  const int shift = get_msb(num_tiles);
+  const int numt = 1<<shift;
+  for (i=0 ; i < cdf_size; ++i) {
+    int sum = 0;
+    for (j=0; j < numt; ++j)
+      sum += cdf_ptr[j][i];
+    fc_cdf_ptr[i] = sum >> shift;
+  }
+}
+
+#define AVERAGE_TILE_CDFS(cname)                                      \
+  for (i=0; i < numt; ++i)                                            \
+    cdf_ptr[i] = (aom_cdf_prob*) &ec_ctxs[i]->cname;                  \
+  fc_cdf_ptr = (aom_cdf_prob*) &fc->cname;                            \
+  cdf_size = (int) sizeof(fc->cname) / sizeof(aom_cdf_prob);          \
+  av1_average_cdf(cdf_ptr, fc_cdf_ptr, cdf_size, numt);               \
+
+void av1_average_tile_coef_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[], const int num_tiles) {
+
+
+  int i, cdf_size;
+
+  aom_cdf_prob *cdf_ptr[MAX_TILE_ROWS * MAX_TILE_COLS];
+  aom_cdf_prob *fc_cdf_ptr;
+  const int shift = get_msb(num_tiles);
+  const int numt = 1<<shift;
+
+  AVERAGE_TILE_CDFS(coef_head_cdfs)
+
+  AVERAGE_TILE_CDFS(coef_tail_cdfs)
+}
+
+void av1_average_tile_mv_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[], const int num_tiles) {
+
+  int i, k, cdf_size;
+
+  aom_cdf_prob *cdf_ptr[MAX_TILE_ROWS * MAX_TILE_COLS];
+  aom_cdf_prob *fc_cdf_ptr;
+  const int shift = get_msb(num_tiles);
+  const int numt = 1<<shift;
+
+  // FIXME Non-ref-mv mode
+#if CONFIG_REF_MV
+  int j;
+  for (j = 0; j<NMV_CONTEXTS; ++j) {
+    AVERAGE_TILE_CDFS(nmvc[j].joint_cdf)
+
+    for (k=0; k < 2; ++k) {
+      AVERAGE_TILE_CDFS(nmvc[j].comps[k].class_cdf);
+
+      AVERAGE_TILE_CDFS(nmvc[j].comps[k].class0_fp_cdf);
+
+      AVERAGE_TILE_CDFS(nmvc[j].comps[k].fp_cdf);
+    }
+  }
+#else
+  AVERAGE_TILE_CDFS(nmvc.joint_cdf)
+
+  for (k=0; k < 2; ++k) {
+    AVERAGE_TILE_CDFS(nmvc.comps[k].class_cdf)
+
+    AVERAGE_TILE_CDFS(nmvc.comps[k].class0_fp_cdf)
+
+    AVERAGE_TILE_CDFS(nmvc.comps[k].fp_cdf)
+
+  }
+#endif
+
+}
+
+void av1_average_tile_intra_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[], const int num_tiles) {
+
+  int i, cdf_size;
+
+  aom_cdf_prob *cdf_ptr[MAX_TILE_ROWS * MAX_TILE_COLS];
+  aom_cdf_prob *fc_cdf_ptr;
+  const int shift = get_msb(num_tiles);
+  const int numt = 1<<shift;
+
+  AVERAGE_TILE_CDFS(tx_size_cdf);
+
+#if CONFIG_VAR_TX
+  // FIXME: txfm_partition probs
+#endif
+  // FIXME: skip probs
+
+#if CONFIG_EXT_TX
+  // FIXME: ext_tx CDFs
+#else
+  AVERAGE_TILE_CDFS(intra_ext_tx_cdf)
+
+  AVERAGE_TILE_CDFS(inter_ext_tx_cdf);
+
+#endif  // CONFIG_EXT_TX
+
+  AVERAGE_TILE_CDFS(seg.tree_cdf)
+
+  AVERAGE_TILE_CDFS(uv_mode_cdf)
+
+#if CONFIG_EXT_PARTITION_TYPES
+  // FIXME
+#else
+  AVERAGE_TILE_CDFS(partition_cdf)
+  cdf_size = (int) sizeof(fc->partition_cdf) / sizeof(aom_cdf_prob);
+  av1_average_cdf(cdf_ptr, fc_cdf_ptr, cdf_size, numt);
+#endif  // CONFIG_EXT_PARTITION_TYPES
+
+#if CONFIG_DELTA_Q
+  // FIXME delta Q
+#endif
+#if CONFIG_EXT_INTRA
+#if CONFIG_INTRA_INTERP
+  // FIXME: intra_filter probs
+#endif  // CONFIG_INTRA_INTERP
+#endif  // CONFIG_EXT_INTRA
+#if CONFIG_FILTER_INTRA
+  // FIXME: intra_filter probs
+#endif  // CONFIG_FILTER_INTRA
+}
+
+void av1_average_tile_inter_cdfs(AV1_COMMON *cm, FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[], const int num_tiles) {
+
+  int i, cdf_size;
+
+  aom_cdf_prob *cdf_ptr[MAX_TILE_ROWS * MAX_TILE_COLS];
+  aom_cdf_prob *fc_cdf_ptr;
+  const int shift = get_msb(num_tiles);
+  const int numt = 1<<shift;
+
+  // FIXME: comp_inter_cdf not defined
+
+  // FIXME: comp_ref_cdf and comp_bwd_ref not defined
+
+  // FIXME: single_ref_cdf not defined
+
+#if CONFIG_REF_MV
+  // FIXME: cdfs not defined for newmv_mode, zeromv_mode, drl_mode, new2mv_mode
+#else
+  AVERAGE_TILE_CDFS(inter_mode_cdf)
+#endif
+
+  // FIXME: cdfs not defined for motion_mode_prob, obmc_prob
+
+  // FIXME: cdfs not defined for super_tx
+
+  // FIXME: CONFIG_EXT_INTER cdfs not defined for inter_compound_mode, interintra_mode etc
+
+  AVERAGE_TILE_CDFS(y_mode_cdf)
+
+  if (cm->interp_filter == SWITCHABLE) {
+    AVERAGE_TILE_CDFS(switchable_interp_cdf)
+  }
+}
+#endif
+
