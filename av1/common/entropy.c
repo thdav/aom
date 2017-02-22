@@ -4925,6 +4925,36 @@ static void adapt_coef_probs(AV1_COMMON *cm, TX_SIZE tx_size,
 #endif
 }
 
+#if CONFIG_EC_ADAPT
+static void adapt_coef_cdfs(AV1_COMMON *cm, FRAME_CONTEXT* pre_fc, TX_SIZE tx_size, int type) {
+#if CONFIG_NEW_TOKENSET
+  coeff_cdf_model *cdf_head = &cm->fc->coef_head_cdfs[tx_size][type];
+  coeff_cdf_model *cdf_tail = &cm->fc->coef_tail_cdfs[tx_size][type];
+  coeff_cdf_model *pre_cdf_head = &pre_fc->coef_head_cdfs[tx_size][type];
+  coeff_cdf_model *pre_cdf_tail = &pre_fc->coef_tail_cdfs[tx_size][type];
+
+  av1_copy(*cdf_head, *pre_cdf_head);
+  av1_copy(*cdf_tail, *pre_cdf_tail);
+#else
+  coeff_cdf_model *token_cdf = &cm->fc->coef_cdfs[tx_size][type];
+  coeff_cdf_model *pre_token_cdf = &pre_fc->coef_cdfs[tx_size][type];
+
+  av1_copy(*token_cdf, *pre_token_cdf);
+#endif
+
+
+}
+
+void av1_adapt_coef_cdfs(AV1_COMMON *cm, FRAME_CONTEXT* pre_fc) {
+  TX_SIZE tx_size;
+  int t;
+
+  for (tx_size = 0; tx_size < TX_SIZES; tx_size++)
+    for (t = 0; t < PLANE_TYPES; t++)
+      adapt_coef_cdfs(cm, pre_fc, tx_size, t);
+}
+#endif
+
 void av1_adapt_coef_probs(AV1_COMMON *cm) {
   TX_SIZE tx_size;
   unsigned int count_sat, update_factor;
@@ -4978,3 +5008,209 @@ void av1_partial_adapt_probs(AV1_COMMON *cm, int mi_row, int mi_col) {
   }
 }
 #endif  // CONFIG_ENTROPY
+
+#if CONFIG_EC_ADAPT
+static void av1_average4_cdf(aom_cdf_prob* cdf_ptr[4], aom_cdf_prob *fc_cdf_ptr, int cdf_size)
+{
+  int i;
+  for (i=0 ; i < cdf_size; ++i)
+    fc_cdf_ptr[i]  = (cdf_ptr[0][i] + cdf_ptr[1][i] + cdf_ptr[2][i] + cdf_ptr[3][i]) / 4;
+}
+
+
+void av1_average_tile_coef_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[4]) {
+
+
+  int i, j, cdf_size;
+
+  aom_cdf_prob *cdf_ptr[4];
+  aom_cdf_prob *fc_cdf_ptr;
+
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->coef_head_cdfs);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->coef_head_cdfs);
+
+  cdf_size = (int) sizeof(fc->coef_head_cdfs) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->coef_tail_cdfs);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->coef_tail_cdfs);
+
+  cdf_size = (int) sizeof(fc->coef_tail_cdfs) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+}
+
+void av1_average_tile_mv_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[4]) {
+
+  int i, j, k, cdf_size;
+
+  aom_cdf_prob *cdf_ptr[4];
+  aom_cdf_prob *fc_cdf_ptr;
+
+  // FIXME Non-ref-mv mode
+  for (j = 0; j<NMV_CONTEXTS; ++j) {
+    for (i=0; i<4; ++i)
+      cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->nmvc[j].joint_cdf);
+    fc_cdf_ptr = (aom_cdf_prob*)(&fc->nmvc[j].joint_cdf);
+
+    cdf_size = (int) sizeof(fc->nmvc[j].joint_cdf) / sizeof(aom_cdf_prob);
+    av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+    for (k=0; k < 2; ++k) {
+      // Class
+      for (i=0; i<4; ++i)
+        cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->nmvc[j].comps[k].class_cdf);
+      fc_cdf_ptr = (aom_cdf_prob*)(&fc->nmvc[j].comps[k].class_cdf);
+
+      cdf_size = (int) sizeof(fc->nmvc[j].comps[k].class_cdf) / sizeof(aom_cdf_prob);
+      av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+      // Class0_fp
+      for (i=0; i<4; ++i)
+        cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->nmvc[j].comps[k].class0_fp_cdf);
+      fc_cdf_ptr = (aom_cdf_prob*)(&fc->nmvc[j].comps[k].class0_fp_cdf);
+
+      cdf_size = (int) sizeof(fc->nmvc[j].comps[k].class0_fp_cdf) / sizeof(aom_cdf_prob);
+      av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+      for (i=0; i<4; ++i)
+        cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->nmvc[j].comps[k].fp_cdf);
+      fc_cdf_ptr = (aom_cdf_prob*)(&fc->nmvc[j].comps[k].fp_cdf);
+
+      cdf_size = (int) sizeof(fc->nmvc[j].comps[k].fp_cdf) / sizeof(aom_cdf_prob);
+      av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+    }
+  }
+}
+
+void av1_average_tile_intra_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[4]) {
+
+  int i, j, cdf_size;
+
+  aom_cdf_prob *cdf_ptr[4];
+  aom_cdf_prob *fc_cdf_ptr;
+
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->tx_size_cdf);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->tx_size_cdf);
+
+  cdf_size = (int) sizeof(fc->tx_size_cdf) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+#if CONFIG_VAR_TX
+  // FIXME: txfm_partition probs
+#endif
+  // FIXME: skip probs
+
+#if CONFIG_EXT_TX
+  // FIXME: ext_tx CDFs
+#else
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->intra_ext_tx_cdf);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->intra_ext_tx_cdf);
+
+  cdf_size = (int) sizeof(fc->intra_ext_tx_cdf) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->inter_ext_tx_cdf);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->inter_ext_tx_cdf);
+
+  cdf_size = (int) sizeof(fc->inter_ext_tx_cdf) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+#endif  // CONFIG_EXT_TX
+
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->seg.tree_cdf);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->seg.tree_cdf);
+
+  cdf_size = (int) sizeof(fc->seg.tree_cdf) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->uv_mode_cdf);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->uv_mode_cdf);
+
+  cdf_size = (int) sizeof(fc->uv_mode_cdf) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+#if CONFIG_EXT_PARTITION_TYPES
+  // FIXME
+#else
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->partition_cdf);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->partition_cdf);
+
+  cdf_size = (int) sizeof(fc->partition_cdf) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+#endif  // CONFIG_EXT_PARTITION_TYPES
+
+#if CONFIG_DELTA_Q
+  // FIXME delta Q
+#endif
+#if CONFIG_EXT_INTRA
+#if CONFIG_INTRA_INTERP
+  // FIXME: intra_filter probs
+#endif  // CONFIG_INTRA_INTERP
+#endif  // CONFIG_EXT_INTRA
+#if CONFIG_FILTER_INTRA
+  // FIXME: intra_filter probs
+#endif  // CONFIG_FILTER_INTRA
+}
+
+void av1_average_tile_inter_cdfs(AV1_COMMON *cm, FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[4]) {
+
+  int i, j, cdf_size;
+
+  aom_cdf_prob *cdf_ptr[4];
+  aom_cdf_prob *fc_cdf_ptr;
+
+  // FIXME: comp_inter_cdf not defined
+
+  // FIXME: comp_ref_cdf and comp_bwd_ref not defined
+
+  // FIXME: single_ref_cdf not defined
+
+#if CONFIG_REF_MV
+  // FIXME: cdfs not defined for newmv_mode, zeromv_mode, drl_mode, new2mv_mode
+#else
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->inter_mode_cdf);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->inter_mode_cdf);
+
+  cdf_size = (int) sizeof(fc->inter_mode_cdf) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+#endif
+
+  // FIXME: cdfs not defined for motion_mode_prob, obmc_prob
+
+  // FIXME: cdfs not defined for super_tx
+
+  // FIXME: CONFIG_EXT_INTER cdfs not defined for inter_compound_mode, interintra_mode etc
+
+  for (i=0; i<4; ++i)
+    cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->y_mode_cdf);
+  fc_cdf_ptr = (aom_cdf_prob*)(&fc->y_mode_cdf);
+
+  cdf_size = (int) sizeof(fc->y_mode_cdf) / sizeof(aom_cdf_prob);
+  av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
+
+  if (cm->interp_filter == SWITCHABLE) {
+//    for (i = 0; i < SWITCHABLE_FILTER_CONTEXTS; i++)
+//      aom_tree_merge_probs(
+//          av1_switchable_interp_tree, pre_fc->switchable_interp_prob[i],
+//          counts->switchable_interp[i], fc->switchable_interp_prob[i]);
+  }
+//
+//#if CONFIG_DELTA_Q
+//  for (i = 0; i < DELTA_Q_CONTEXTS; ++i)
+//    fc->delta_q_prob[i] =
+//        mode_mv_merge_probs(pre_fc->delta_q_prob[i], counts->delta_q[i]);
+//#endif
+//
+}
+#endif
+

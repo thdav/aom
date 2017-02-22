@@ -1632,6 +1632,7 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
 int av1_switchable_interp_ind[SWITCHABLE_FILTERS];
 int av1_switchable_interp_inv[SWITCHABLE_FILTERS];
 
+#if !CONFIG_EC_ADAPT
 void av1_set_mode_cdfs(struct AV1Common *cm) {
   FRAME_CONTEXT *fc = cm->fc;
   int i, j;
@@ -1643,10 +1644,13 @@ void av1_set_mode_cdfs(struct AV1Common *cm) {
   for (i = 0; i < INTRA_MODES; ++i)
     av1_tree_to_cdf(av1_intra_mode_tree, fc->uv_mode_prob[i],
                     fc->uv_mode_cdf[i]);
-
+#if CONFIG_EXT_PARTITION_TYPES
+  // FIXME
+#else
   for (i = 0; i < PARTITION_CONTEXTS; ++i)
     av1_tree_to_cdf(av1_partition_tree, fc->partition_prob[i],
                     fc->partition_cdf[i]);
+#endif
 
   for (i = 0; i < INTRA_MODES; ++i)
     for (j = 0; j < INTRA_MODES; ++j)
@@ -1681,6 +1685,7 @@ void av1_set_mode_cdfs(struct AV1Common *cm) {
     }
   }
 }
+#endif  // !CONFIG_EC_ADAPT
 #endif
 
 #if CONFIG_DUAL_FILTER
@@ -1810,12 +1815,6 @@ void av1_adapt_inter_frame_probs(AV1_COMMON *cm) {
           av1_switchable_interp_tree, pre_fc->switchable_interp_prob[i],
           counts->switchable_interp[i], fc->switchable_interp_prob[i]);
   }
-
-#if CONFIG_DELTA_Q
-  for (i = 0; i < DELTA_Q_CONTEXTS; ++i)
-    fc->delta_q_prob[i] =
-        mode_mv_merge_probs(pre_fc->delta_q_prob[i], counts->delta_q[i]);
-#endif
 }
 
 void av1_adapt_intra_frame_probs(AV1_COMMON *cm) {

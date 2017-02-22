@@ -4643,6 +4643,17 @@ static void dump_filtered_recon_frames(AV1_COMP *cpi) {
 }
 #endif  // DUMP_RECON_FRAMES
 
+#if CONFIG_EC_ADAPT
+
+static void make_update_tile_list_enc(AV1_COMP* cpi, const int tile_rows, const int tile_cols, FRAME_CONTEXT *ec_ctxs[4])
+{
+  ec_ctxs[0] = &cpi->tile_data[((3*tile_rows)/8)*tile_cols+((3*tile_cols)/8)].tctx;
+  ec_ctxs[1] = &cpi->tile_data[((3*tile_rows)/8)*tile_cols+((5*tile_cols)/8)].tctx;
+  ec_ctxs[2] = &cpi->tile_data[((5*tile_rows)/8)*tile_cols+((3*tile_cols)/8)].tctx;
+  ec_ctxs[3] = &cpi->tile_data[((5*tile_rows)/8)*tile_cols+((5*tile_cols)/8)].tctx;
+}
+
+#endif
 static void encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
                                       uint8_t *dest,
                                       unsigned int *frame_flags) {
@@ -4650,6 +4661,9 @@ static void encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
   const AV1EncoderConfig *const oxcf = &cpi->oxcf;
   struct segmentation *const seg = &cm->seg;
   TX_SIZE t;
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *tile_ctxs4[4];
+#endif
 #if CONFIG_XIPHRC
   int frame_type;
   int drop_this_frame = 0;
@@ -4928,13 +4942,26 @@ static void encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
     cm->partial_prob_update = 0;
 #endif  // CONFIG_ENTROPY
     av1_adapt_coef_probs(cm);
+#if CONFIG_EC_ADAPT
+    make_update_tile_list_enc(cpi, cm->tile_rows, cm->tile_cols, tile_ctxs4);
+    av1_average_tile_coef_cdfs(cpi->common.fc, tile_ctxs4);
+#endif
     av1_adapt_intra_frame_probs(cm);
+#if CONFIG_EC_ADAPT
+    av1_average_tile_intra_cdfs(cpi->common.fc, tile_ctxs4);
+#endif
   }
 
   if (!frame_is_intra_only(cm)) {
     if (cm->refresh_frame_context == REFRESH_FRAME_CONTEXT_BACKWARD) {
       av1_adapt_inter_frame_probs(cm);
+#if CONFIG_EC_ADAPT
+      av1_average_tile_inter_cdfs(&cpi->common, cpi->common.fc, tile_ctxs4);
+#endif
       av1_adapt_mv_probs(cm, cm->allow_high_precision_mv);
+#if CONFIG_EC_ADAPT
+      av1_average_tile_mv_cdfs(cpi->common.fc, tile_ctxs4);
+#endif
     }
   }
 
