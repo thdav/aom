@@ -59,7 +59,12 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
   } else {
     int i;
     const int n = mv_class + CLASS0_BITS - 1;  // number of bits
+
+#if CONFIG_EC_ADAPT
+    for (i = 0; i < n; ++i) aom_write_bit(w, (d >> i) & 1);
+#else
     for (i = 0; i < n; ++i) aom_write(w, (d >> i) & 1, mvcomp->bits[i]);
+#endif
   }
 
 // Fractional bits

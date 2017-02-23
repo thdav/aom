@@ -238,28 +238,32 @@ void av1_adapt_mv_probs(AV1_COMMON *cm, int allow_hp) {
       const nmv_component *pre_comp = &pre_fc->comps[i];
       const nmv_component_counts *c = &counts->comps[i];
 
-#if !CONFIG_EC_ADAPT
       comp->sign = av1_mode_mv_merge_probs(pre_comp->sign, c->sign);
+#if !CONFIG_EC_ADAPT
       aom_tree_merge_probs(av1_mv_class_tree, pre_comp->classes, c->classes,
                            comp->classes);
       aom_tree_merge_probs(av1_mv_class0_tree, pre_comp->class0, c->class0,
                            comp->class0);
+#endif
 
+#if !CONFIG_EC_ADAPT
       for (j = 0; j < MV_OFFSET_BITS; ++j)
         comp->bits[j] = av1_mode_mv_merge_probs(pre_comp->bits[j], c->bits[j]);
+#endif
 
+#if !CONFIG_EC_ADAPT
       for (j = 0; j < CLASS0_SIZE; ++j)
         aom_tree_merge_probs(av1_mv_fp_tree, pre_comp->class0_fp[j],
                              c->class0_fp[j], comp->class0_fp[j]);
 
       aom_tree_merge_probs(av1_mv_fp_tree, pre_comp->fp, c->fp, comp->fp);
+#endif
 
       if (allow_hp) {
         comp->class0_hp =
             av1_mode_mv_merge_probs(pre_comp->class0_hp, c->class0_hp);
         comp->hp = av1_mode_mv_merge_probs(pre_comp->hp, c->hp);
       }
-#endif
     }
   }
 #else

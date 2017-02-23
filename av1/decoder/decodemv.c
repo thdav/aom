@@ -952,7 +952,11 @@ static int read_mv_component(aom_reader *r, nmv_component *mvcomp, int usehp) {
     const int n = mv_class + CLASS0_BITS - 1;  // number of bits
 
     d = 0;
+#if CONFIG_EC_ADAPT
+    for (i = 0; i < n; ++i) d |= aom_read_bit(r, ACCT_STR) << i;
+#else
     for (i = 0; i < n; ++i) d |= aom_read(r, mvcomp->bits[i], ACCT_STR) << i;
+#endif
     mag = CLASS0_SIZE << (mv_class + 2);
   }
 
