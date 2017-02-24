@@ -5199,18 +5199,13 @@ void av1_average_tile_inter_cdfs(AV1_COMMON *cm, FRAME_CONTEXT *fc, FRAME_CONTEX
   av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
 
   if (cm->interp_filter == SWITCHABLE) {
-//    for (i = 0; i < SWITCHABLE_FILTER_CONTEXTS; i++)
-//      aom_tree_merge_probs(
-//          av1_switchable_interp_tree, pre_fc->switchable_interp_prob[i],
-//          counts->switchable_interp[i], fc->switchable_interp_prob[i]);
+    for (i=0; i<4; ++i)
+      cdf_ptr[i] = (aom_cdf_prob*)(&ec_ctxs[i]->switchable_interp_cdf);
+    fc_cdf_ptr = (aom_cdf_prob*)(&fc->switchable_interp_cdf);
+
+    cdf_size = (int) sizeof(fc->y_mode_cdf) / sizeof(aom_cdf_prob);
+    av1_average4_cdf(cdf_ptr, fc_cdf_ptr, cdf_size);
   }
-//
-//#if CONFIG_DELTA_Q
-//  for (i = 0; i < DELTA_Q_CONTEXTS; ++i)
-//    fc->delta_q_prob[i] =
-//        mode_mv_merge_probs(pre_fc->delta_q_prob[i], counts->delta_q[i]);
-//#endif
-//
 }
 #endif
 
