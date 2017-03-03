@@ -810,7 +810,7 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
 
     aom_write_symbol(w, comb_symb, *p->head_cdf, 6);
     if (token > ONE_TOKEN) {
-      aom_write_symbol(w, token - TWO_TOKEN, *p->tail_cdf,
+      aom_write_cdf(w, token - TWO_TOKEN, *p->tail_cdf,
                        CATEGORY6_TOKEN + 1 - 2);
     }
 

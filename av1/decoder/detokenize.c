@@ -191,7 +191,7 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
     more_data = !token || ((comb_token & 1) == 1);
 
     if (token > ONE_TOKEN)
-      token += aom_read_symbol(r, *cdf_tail, CATEGORY6_TOKEN + 1 - 2, ACCT_STR);
+      token += aom_read_cdf(r, *cdf_tail, CATEGORY6_TOKEN + 1 - 2, ACCT_STR);
     INCREMENT_COUNT(ZERO_TOKEN + (token > ZERO_TOKEN) + (token > ONE_TOKEN));
 #if CONFIG_NEW_QUANT
     dqv_val = &dq_val[band][0];

@@ -5042,7 +5042,7 @@ void av1_average_tile_coef_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[], con
 
   AVERAGE_TILE_CDFS(coef_head_cdfs)
 
-  AVERAGE_TILE_CDFS(coef_tail_cdfs)
+  av1_coef_pareto_cdfs(fc);
 }
 
 void av1_average_tile_mv_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[], const int num_tiles) {
