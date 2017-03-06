@@ -5517,7 +5517,6 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
   av1_coef_pareto_cdfs(cm->fc);
 #endif  // CONFIG_EC_MULTISYMBOL
 }
-
 static void adapt_coef_probs(AV1_COMMON *cm, TX_SIZE tx_size,
                              unsigned int count_sat,
                              unsigned int update_factor) {
