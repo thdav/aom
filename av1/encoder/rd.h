@@ -418,7 +418,6 @@ void av1_update_rd_thresh_fact(const AV1_COMMON *const cm,
 
 #if CONFIG_NEW_TOKENSET
 void av1_fill_token_costs(av1_coeff_cost *c,
-                          av1_coeff_probs_model (*p)[PLANE_TYPES],
                           coeff_cdf_model (*cdf_head)[PLANE_TYPES],
                           coeff_cdf_model (*cdf_tail)[PLANE_TYPES]);
 #else

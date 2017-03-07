@@ -165,8 +165,35 @@ static void fill_mode_costs(AV1_COMP *cpi) {
 }
 
 #if CONFIG_NEW_TOKENSET
+static void set_prob_tokens(int prob_head[ENTROPY_TOKENS], int prob_tail[ENTROPY_TOKENS], const aom_cdf_prob *cdf_head, const aom_cdf_prob *cdf_tail)
+{
+  int prob_tmp[5];
+  int prob_block_nz = (1<<15) - cdf_head[0];
+  int scale, offset = prob_block_nz / 2;
+  int r;
+
+  prob_tmp[ZERO_TOKEN] = cdf_head[1 + ZERO_TOKEN] - cdf_head[1 + ZERO_TOKEN - 1];
+  prob_tmp[ONE_TOKEN_EOB] = cdf_head[1 + ONE_TOKEN_EOB] - cdf_head[1 + ONE_TOKEN_EOB - 1];
+  prob_tmp[ONE_TOKEN_NEOB] = cdf_head[1 + ONE_TOKEN_NEOB] - cdf_head[1 + ONE_TOKEN_NEOB - 1];
+  prob_tmp[TWO_TOKEN_PLUS_EOB] = cdf_head[1 + TWO_TOKEN_PLUS_EOB] - cdf_head[1 + TWO_TOKEN_PLUS_EOB - 1];
+  prob_tmp[TWO_TOKEN_PLUS_NEOB] = cdf_head[1 + TWO_TOKEN_PLUS_NEOB] - cdf_head[1 + TWO_TOKEN_PLUS_NEOB - 1];
+
+  prob_head[ZERO_TOKEN] = AOMMIN(255, (prob_tmp[ZERO_TOKEN] * (1<<8)) / prob_block_nz);
+  prob_head[ONE_TOKEN] = AOMMIN(255, ((/*prob_tmp[ONE_TOKEN_EOB] +*/ prob_tmp[ONE_TOKEN_NEOB]) * (1<<8) + offset) / prob_block_nz);
+  prob_head[TWO_TOKEN] = AOMMIN(255, ((/*prob_tmp[TWO_TOKEN_PLUS_EOB] +*/ prob_tmp[TWO_TOKEN_PLUS_NEOB]) * (1<<8) + offset) / prob_block_nz);
+
+  scale = (prob_tmp[ONE_TOKEN_EOB] + prob_tmp[TWO_TOKEN_PLUS_EOB] + prob_tmp[ONE_TOKEN_NEOB] + prob_tmp[TWO_TOKEN_PLUS_NEOB]);
+  offset = scale / 2;
+  prob_head[EOB_TOKEN] = AOMMIN(255, ((prob_tmp[ONE_TOKEN_EOB] + prob_tmp[TWO_TOKEN_PLUS_EOB]) * (1<<8) + offset) / scale);
+
+  prob_tail[TWO_TOKEN] = AOMMIN(255, cdf_tail[0] >> 7);
+  for (r=TWO_TOKEN + 1; r < EOB_TOKEN; ++r) {
+    prob_tail[r] = cdf_tail[r - TWO_TOKEN] - cdf_tail[r - TWO_TOKEN - 1];
+    prob_tail[r] = AOMMIN(255, (prob_tail[r] + 64) >> 7);
+  }
+}
+
 void av1_fill_token_costs(av1_coeff_cost *c,
-                          av1_coeff_probs_model (*p)[PLANE_TYPES],
                           coeff_cdf_model (*cdf_head)[PLANE_TYPES],
                           coeff_cdf_model (*cdf_tail)[PLANE_TYPES]) {
   int i, j, k, l;
@@ -176,49 +203,27 @@ void av1_fill_token_costs(av1_coeff_cost *c,
       for (j = 0; j < REF_TYPES; ++j)
         for (k = 0; k < COEF_BANDS; ++k)
           for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l) {
-            int prob_head[ENTROPY_NODES];
-            int prob_head_conv[ENTROPY_NODES+4];
-            aom_prob punc[UNCONSTRAINED_NODES];
-            av1_copy(punc, p[t][i][j][k][l]);
-            int scale =  32768 - cdf_head[t][i][j][k][l][0];
-            int scale_nz;
+            int prob_head[ENTROPY_TOKENS];
+            int prob_tail[ENTROPY_TOKENS];
             int r;
 
-            prob_head[ZERO_TOKEN] = cdf_head[t][i][j][k][l][1 + ZERO_TOKEN] - cdf_head[t][i][j][k][l][1 + ZERO_TOKEN - 1];
-            prob_head[ONE_TOKEN_EOB] = cdf_head[t][i][j][k][l][1 + ONE_TOKEN_EOB] - cdf_head[t][i][j][k][l][1 + ONE_TOKEN_EOB - 1];
-            prob_head[ONE_TOKEN_NEOB] = cdf_head[t][i][j][k][l][1 + ONE_TOKEN_NEOB] - cdf_head[t][i][j][k][l][1 + ONE_TOKEN_NEOB - 1];
-            prob_head[TWO_TOKEN_PLUS_EOB] = cdf_head[t][i][j][k][l][1 + TWO_TOKEN_PLUS_EOB] - cdf_head[t][i][j][k][l][1 + TWO_TOKEN_PLUS_EOB - 1];
-            prob_head[TWO_TOKEN_PLUS_NEOB] = cdf_head[t][i][j][k][l][1 + TWO_TOKEN_PLUS_NEOB] - cdf_head[t][i][j][k][l][1 + TWO_TOKEN_PLUS_NEOB - 1];
+            // Head costs
+            set_prob_tokens(prob_head, prob_tail, cdf_head[t][i][j][k][l], cdf_tail[t][i][j][k][l]);
 
-            prob_head_conv[ZERO_TOKEN] = AOMMIN(255, AOMMAX(1, (prob_head[ZERO_TOKEN] * 32768) / (scale<<7)));
-            punc[1] = prob_head_conv[ZERO_TOKEN];
-            scale_nz = 256 - prob_head_conv[ZERO_TOKEN];
+            c[t][i][j][k][1][l][ZERO_TOKEN] = av1_cost_bit(prob_head[ZERO_TOKEN], 0);
+            c[t][i][j][k][0][l][ZERO_TOKEN] = c[t][i][j][k][1][l][ZERO_TOKEN];
+            c[t][i][j][k][0][l][ONE_TOKEN] = av1_cost_bit(prob_head[ONE_TOKEN], 0);
+            c[t][i][j][k][1][l][ONE_TOKEN] = c[t][i][j][k][0][l][ONE_TOKEN];
+            c[t][i][j][k][0][l][EOB_TOKEN] = av1_cost_bit(prob_head[EOB_TOKEN], 0);
+            c[t][i][j][k][1][l][EOB_TOKEN] = c[t][i][j][k][0][l][EOB_TOKEN];
 
-//            prob_head_conv[ONE_TOKEN] = ((/*prob_head[ONE_TOKEN_EOB] +*/ prob_head[ONE_TOKEN_NEOB]) * 32768) / (scale<<7);
-//            punc[2] =  AOMMIN(255, AOMMAX(1, (prob_head_conv[ONE_TOKEN] * 256) / (scale_nz)));
-//
-//            prob_head_conv[EOB_TOKEN] = ((prob_head[ONE_TOKEN_EOB] + prob_head[TWO_TOKEN_PLUS_EOB]) * 32768) / (scale<<7);
-//            punc[0] =  AOMMIN(255, AOMMAX(1, (prob_head_conv[EOB_TOKEN] * 256) / (scale_nz)));
-//
-            aom_prob probs[ENTROPY_NODES];
-            av1_model_to_full_probs(punc, probs);
-            prob_head_conv[TWO_TOKEN] = ((/*prob_head[TWO_TOKEN_PLUS_EOB] +*/ prob_head[TWO_TOKEN_PLUS_NEOB]) * 32768) / (scale<<7);
-            int two_prob =  AOMMIN(255, AOMMAX(1, prob_head_conv[TWO_TOKEN]));
-            av1_cost_tokens((int *)c[t][i][j][k][0][l], probs, av1_coef_tree);
-            av1_cost_tokens_skip((int *)c[t][i][j][k][1][l], probs,
-                                 av1_coef_tree);
-//            c[t][i][j][k][1][l][ZERO_TOKEN] = av1_cost_bit(prob_head_conv[ZERO_TOKEN], 0);
-//            c[t][i][j][k][0][l][ZERO_TOKEN] = av1_cost_bit(prob_head_conv[ZERO_TOKEN], 0);
-//            c[t][i][j][k][0][l][ONE_TOKEN] = av1_cost_bit(prob_head_conv[ONE_TOKEN], 0);
-//            for (r=TWO_TOKEN; r<EOB_TOKEN; ++r) {
-////              fprintf(stderr, "r=%d\n",r);
-//              c[t][i][j][k][0][l][r] = av1_cost_bit(two_prob, 0) + av1_cost_bit(AOMMIN(255, AOMMAX(1, cdf_tail[t][i][j][k][l][r-TWO_TOKEN]>>7)),0);
-//            }
-////            fprintf(stderr, "Got here\n",r);
-            assert(c[t][i][j][k][0][l][EOB_TOKEN] ==
-                   c[t][i][j][k][1][l][EOB_TOKEN]);
+            // Now look at the tail
+            int two_plus_cost = av1_cost_bit(prob_head[TWO_TOKEN], 0);
+            for (r=TWO_TOKEN; r < EOB_TOKEN; ++r) {
+              c[t][i][j][k][0][l][r] = two_plus_cost + av1_cost_bit(prob_tail[r], 0);
+              c[t][i][j][k][1][l][r] = c[t][i][j][k][0][j][r];
+            }
           }
-
 }
 #else
 void av1_fill_token_costs(av1_coeff_cost *c,
@@ -453,7 +458,7 @@ void av1_initialize_rd_consts(AV1_COMP *cpi) {
 
   if (cpi->oxcf.pass != 1) {
 #if CONFIG_NEW_TOKENSET
-    av1_fill_token_costs(x->token_costs, cm->fc->coef_probs, cm->fc->coef_head_cdfs, cm->fc->coef_tail_cdfs);
+    av1_fill_token_costs(x->token_costs, cm->fc->coef_head_cdfs, cm->fc->coef_tail_cdfs);
 #else
     av1_fill_token_costs(x->token_costs, cm->fc->coef_probs);
 #endif
