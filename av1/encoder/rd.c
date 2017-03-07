@@ -214,15 +214,15 @@ void av1_fill_token_costs(av1_coeff_cost *c,
             c[t][i][j][k][1][l][ONE_TOKEN] = av1_cost_bit(prob_head_conv[ONE_TOKEN], 0);
             c[t][i][j][k][0][l][EOB_TOKEN] = av1_cost_bit(prob_head_conv[EOB_TOKEN], 0);
             c[t][i][j][k][1][l][EOB_TOKEN] = av1_cost_bit(prob_head_conv[EOB_TOKEN], 0);
-//            // Now look at the tail
-//            int two_plus_prob = ((/*prob_head[TWO_TOKEN_PLUS_EOB] +*/ prob_head[TWO_TOKEN_PLUS_NEOB]) * 32768) / (scale<<7);
-//            two_plus_prob =  AOMMIN(255, AOMMAX(0, two_plus_prob));
-//            for (r=TWO_TOKEN; r < EOB_TOKEN; ++r) {
-//              int tail_prob = cdf_tail[t][i][j][k][l][r - TWO_TOKEN] - (r==TWO_TOKEN ? 0 : cdf_tail[t][i][j][k][l][r - TWO_TOKEN - 1]);
-//              tail_prob = AOMMIN(255, AOMMAX(0, tail_prob>>7));
-//              c[t][i][j][k][0][l][r] = av1_cost_bit(two_plus_prob, 0) + av1_cost_bit(tail_prob, 0);
-//              c[t][i][j][k][1][l][r] = c[t][i][j][k][0][j][r];
-//            }
+            // Now look at the tail
+            int two_plus_prob = ((prob_head[TWO_TOKEN_PLUS_EOB] + prob_head[TWO_TOKEN_PLUS_NEOB]) * 32768) / (scale<<7);
+            two_plus_prob =  AOMMIN(255, AOMMAX(0, two_plus_prob));
+            for (r=TWO_TOKEN; r < EOB_TOKEN; ++r) {
+              int tail_prob = cdf_tail[t][i][j][k][l][r - TWO_TOKEN] - (r==TWO_TOKEN ? 0 : cdf_tail[t][i][j][k][l][r - TWO_TOKEN - 1]);
+              tail_prob = AOMMIN(255, AOMMAX(0, tail_prob>>7));
+              c[t][i][j][k][0][l][r] = av1_cost_bit(two_plus_prob, 0) + av1_cost_bit(tail_prob, 0);
+              c[t][i][j][k][1][l][r] = c[t][i][j][k][0][j][r];
+            }
 
 
             assert(c[t][i][j][k][0][l][EOB_TOKEN] ==
