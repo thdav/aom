@@ -1160,7 +1160,7 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
       }
 
       // eob token
-//      /*if (band_left)*/ cost += (*token_costs)[0][!prev_t][EOB_TOKEN];
+      /*if (band_left)*/ cost += (*token_costs)[0][!prev_t][EOB_TOKEN];
 
     } else {  // !use_fast_coef_costing
       int band_left = *band_count++;
@@ -1196,8 +1196,8 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
 
       // eob token
 //      if (band_left) {
-//        pt = get_coef_context(nb, token_cache, c);
-//        cost += (*token_costs)[0][pt][EOB_TOKEN];
+        pt = get_coef_context(nb, token_cache, c);
+        cost += (*token_costs)[0][pt][EOB_TOKEN];
 //      }
     }
   }
