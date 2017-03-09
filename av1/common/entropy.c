@@ -5618,9 +5618,9 @@ static void av1_average_cdf(aom_cdf_prob *cdf_ptr[], aom_cdf_prob *fc_cdf_ptr,
   const int shift = get_msb(num_tiles);
   const int numt = 1 << shift;
   for (i = 0; i < cdf_size; ++i) {
-    int sum = 0;
+    int sum = fc_cdf_ptr[i] << shift;
     for (j = 0; j < numt; ++j) sum += cdf_ptr[j][i];
-    fc_cdf_ptr[i] = sum >> shift;
+    fc_cdf_ptr[i] = sum >> (shift + 1);
   }
 }
 
