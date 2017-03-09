@@ -1114,8 +1114,11 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
   int c, cost;
 #if CONFIG_NEW_TOKENSET
   const int ref = is_inter_block(mbmi);
-  aom_prob *blockz_probs =
-      cm->fc->blockzero_probs[txsize_sqr_map[tx_size]][type][ref];
+  aom_cdf_prob(
+      *const coef_head_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
+      cm->fc->coef_head_cdfs[tx_size_ctx][type][ref];
+  int block_z_prob;
+
 #endif  // CONFIG_NEW_TOKENSET
 
 #if CONFIG_AOM_HIGHBITDEPTH
@@ -1133,7 +1136,8 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
   if (eob == 0) {
 #if CONFIG_NEW_TOKENSET
     // single eob token
-    cost = av1_cost_bit(blockz_probs[pt], 0);
+    block_z_prob = AOMMIN(255, (coef_head_cdfs[0][pt][0] >> 7));
+    cost = av1_cost_bit(block_z_prob, 0);
 #else
     cost = token_costs[0][0][pt][EOB_TOKEN];
 #endif  // CONFIG_NEW_TOKENSET
@@ -3972,7 +3976,6 @@ static void select_tx_block(const AV1_COMP *cpi, MACROBLOCK *x, int blk_row,
   aom_cdf_prob(
       *const coef_head_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
       ec_ctx->coef_head_cdfs[tx_size_ctx][pd->plane_type][1];
-  aom_cdf_prob block_z_prob = coef_head_cdfs[0];
 #endif
 
   av1_init_rd_stats(&sum_rd_stats);
@@ -3991,7 +3994,7 @@ static void select_tx_block(const AV1_COMP *cpi, MACROBLOCK *x, int blk_row,
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
 
 #if CONFIG_NEW_TOKENSET
-  block_z_prob = AOMMAX(1, AOMMIN(255, (coef_head_cdfs[0][coeff_ctx][0] >> 7)));
+  block_z_prob = AOMMIN(255, (coef_head_cdfs[0][coeff_ctx][0] >> 7));
 
   zero_blk_rate = av1_cost_bit(block_z_prob, 0);
 #else
