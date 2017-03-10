@@ -1136,7 +1136,7 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
   if (eob == 0) {
 #if CONFIG_NEW_TOKENSET
     // single eob token
-    block_z_prob = AOMMIN(255, (coef_head_cdfs[0][pt][0] >> 7));
+    block_z_prob = AOMMIN(255, ((coef_head_cdfs[0][pt][0] + 64) >> 7));
     cost = av1_cost_bit(block_z_prob, 0);
 #else
     cost = token_costs[0][0][pt][EOB_TOKEN];
@@ -3994,7 +3994,7 @@ static void select_tx_block(const AV1_COMP *cpi, MACROBLOCK *x, int blk_row,
   if (blk_row >= max_blocks_high || blk_col >= max_blocks_wide) return;
 
 #if CONFIG_NEW_TOKENSET
-  block_z_prob = AOMMIN(255, (coef_head_cdfs[0][coeff_ctx][0] >> 7));
+  block_z_prob = AOMMIN(255, ((coef_head_cdfs[0][coeff_ctx][0] + 64) >> 7));
 
   zero_blk_rate = av1_cost_bit(block_z_prob, 0);
 #else
