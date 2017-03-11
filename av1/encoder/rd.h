@@ -416,8 +416,14 @@ void av1_update_rd_thresh_fact(const AV1_COMMON *const cm,
                                int (*fact)[MAX_MODES], int rd_thresh, int bsize,
                                int best_mode_index);
 
+#if CONFIG_NEW_TOKENSET
+void av1_fill_token_costs(av1_coeff_cost *c,
+                          coeff_cdf_model (*cdf_head)[PLANE_TYPES],
+                          coeff_cdf_model (*cdf_tail)[PLANE_TYPES]);
+#else
 void av1_fill_token_costs(av1_coeff_cost *c,
                           av1_coeff_probs_model (*p)[PLANE_TYPES]);
+#endif
 
 static INLINE int rd_less_than_thresh(int64_t best_rd, int thresh,
                                       int thresh_fact) {
