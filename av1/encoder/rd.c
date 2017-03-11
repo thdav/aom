@@ -235,7 +235,7 @@ void av1_fill_token_costs(av1_coeff_cost *c,
                 av1_cost_bit(prob_head[ONE_TOKEN], 0);
             c[t][i][j][k][1][l][ONE_TOKEN] = c[t][i][j][k][0][l][ONE_TOKEN];
             c[t][i][j][k][0][l][EOB_TOKEN] =
-                av1_cost_bit(prob_head[EOB_TOKEN], 0);
+                av1_cost_bit(prob_head[EOB_TOKEN], 0) - av1_cost_bit(prob_head[EOB_TOKEN], 1);
             c[t][i][j][k][1][l][EOB_TOKEN] = c[t][i][j][k][0][l][EOB_TOKEN];
 
             // Now look at the tail
