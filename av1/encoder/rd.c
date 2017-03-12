@@ -234,18 +234,20 @@ static const int rd_frame_type_factor[FRAME_UPDATE_TYPES] = {
 
 int av1_compute_rd_mult(const AV1_COMP *cpi, int qindex) {
   const int64_t q = av1_dc_quant(qindex, 0, cpi->common.bit_depth);
+  const int numer = 87;
+  const int denom = 24;
 #if CONFIG_AOM_HIGHBITDEPTH
   int64_t rdmult = 0;
   switch (cpi->common.bit_depth) {
-    case AOM_BITS_8: rdmult = 88 * q * q / 24; break;
-    case AOM_BITS_10: rdmult = ROUND_POWER_OF_TWO(88 * q * q / 24, 4); break;
-    case AOM_BITS_12: rdmult = ROUND_POWER_OF_TWO(88 * q * q / 24, 8); break;
+    case AOM_BITS_8: rdmult = numer * q * q / denom; break;
+    case AOM_BITS_10: rdmult = ROUND_POWER_OF_TWO(numer * q * q / denom, 4); break;
+    case AOM_BITS_12: rdmult = ROUND_POWER_OF_TWO(numer * q * q / denom, 8); break;
     default:
       assert(0 && "bit_depth should be AOM_BITS_8, AOM_BITS_10 or AOM_BITS_12");
       return -1;
   }
 #else
-  int64_t rdmult = 88 * q * q / 24;
+  int64_t rdmult = numer * q * q / denom;
 #endif  // CONFIG_AOM_HIGHBITDEPTH
   if (cpi->oxcf.pass == 2 && (cpi->common.frame_type != KEY_FRAME)) {
     const GF_GROUP *const gf_group = &cpi->twopass.gf_group;
