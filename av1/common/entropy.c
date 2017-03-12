@@ -5616,10 +5616,15 @@ static void av1_average_cdf(aom_cdf_prob *cdf_ptr[], aom_cdf_prob *fc_cdf_ptr,
   int i, j;
   const int shift = get_msb(num_tiles);
   const int numt = 1 << shift;
+  aom_cdf_prob last_val = 0;
   for (i = 0; i < cdf_size; ++i) {
     int sum = 0;
     for (j = 0; j < numt; ++j) sum += cdf_ptr[j][i];
-    fc_cdf_ptr[i] = sum >> shift;
+    if (last_val == CDF_PROB_TOP)
+      fc_cdf_ptr[i] = 0;
+    else
+      fc_cdf_ptr[i] = sum >> shift;
+    last_val = fc_cdf_ptr[i];
   }
 }
 
