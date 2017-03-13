@@ -549,6 +549,7 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
   unsigned int(*const blockz_count)[2] =
       td->counts->blockz_count[txsize_sqr_map[tx_size]][type][ref];
   int is_eob;
+  const int max_eob = tx_size_2d[tx_size];
 #else
 #if CONFIG_EC_MULTISYMBOL
   aom_cdf_prob(*const coef_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
@@ -585,7 +586,7 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
       ++counts[band[c]][pt][ZERO_TOKEN];
       token_cache[scan[c]] = 0;
     } else {
-      is_eob = (c + 1 == eob);
+      is_eob = (c + 1 == eob) ? (c + 1 == max_eob ? 2 : 1) : 0;
 
       av1_get_token_extra(v, &token, &extra);
 
@@ -594,7 +595,7 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
 
       ++counts[band[c]][pt][token];
       ++eob_branch[band[c]][pt];
-      counts[band[c]][pt][EOB_TOKEN] += is_eob;
+      counts[band[c]][pt][EOB_TOKEN] += !!is_eob;
 
       token_cache[scan[c]] = av1_pt_energy_class[token];
     }
