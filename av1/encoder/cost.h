@@ -30,6 +30,24 @@ extern const uint16_t av1_prob_cost[256];
 
 #define av1_cost_bit(prob, bit) av1_cost_zero((bit) ? 256 - (prob) : (prob))
 
+#if CONFIG_EC_MULTISYMBOL
+
+static INLINE unsigned int av1_cost_zero_cdf(const unsigned int prob)
+{
+  const int shift = CDF_PROB_BITS - 8;
+  const unsigned int p8 = prob >> shift;
+  const int rem = prob - (p8 << shift);
+  if (p8 == 0) {
+    return av1_cost_zero(prob) + (shift << AV1_PROB_COST_SHIFT);
+  } else if (p8 < 255) {
+    return av1_cost_zero(p8) + ((rem * (av1_cost_zero(p8 + 1) - av1_cost_zero(p8))) >> shift);
+  } else {
+    return av1_cost_zero(p8) - ((rem * av1_cost_zero(p8)) >> shift);
+  }
+}
+#define av1_cost_bit_cdf(prob, bit) av1_cost_zero_cdf((bit) ? CDF_PROB_TOP - (prob) : (prob))
+#endif
+
 // Cost of coding an n bit literal, using 128 (i.e. 50%) probability
 // for each bit.
 #define av1_cost_literal(n) ((n) * (1 << AV1_PROB_COST_SHIFT))

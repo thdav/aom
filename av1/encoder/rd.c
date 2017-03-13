@@ -185,28 +185,17 @@ static void set_prob_tokens(int prob_head[ENTROPY_TOKENS],
   prob_tmp[TWO_TOKEN_PLUS_NEOB] =
       cdf_head[1 + TWO_TOKEN_PLUS_NEOB] - cdf_head[1 + TWO_TOKEN_PLUS_NEOB - 1];
 
-  prob_head[ZERO_TOKEN] =
-      AOMMIN(MAX_PROB, (prob_tmp[ZERO_TOKEN] << 8) / prob_block_nz);
-  prob_head[ONE_TOKEN] =
-      AOMMIN(MAX_PROB,
-             ((/*prob_tmp[ONE_TOKEN_EOB] +*/ prob_tmp[ONE_TOKEN_NEOB]) << 8) /
-                 prob_block_nz);
-  prob_head[TWO_TOKEN] = AOMMIN(
-      MAX_PROB,
-      ((/*prob_tmp[TWO_TOKEN_PLUS_EOB] +*/ prob_tmp[TWO_TOKEN_PLUS_NEOB]) *
-       (1 << 8)) /
-          prob_block_nz);
+  prob_head[ZERO_TOKEN] = (prob_tmp[ZERO_TOKEN] << 15) / prob_block_nz;
+  prob_head[ONE_TOKEN] = (prob_tmp[ONE_TOKEN_NEOB] << 15) / prob_block_nz;
+  prob_head[TWO_TOKEN] = ( prob_tmp[TWO_TOKEN_PLUS_NEOB] << 15) / prob_block_nz;
 
   scale = (prob_tmp[ONE_TOKEN_EOB] + prob_tmp[TWO_TOKEN_PLUS_EOB] +
            prob_tmp[ONE_TOKEN_NEOB] + prob_tmp[TWO_TOKEN_PLUS_NEOB]);
-  prob_head[EOB_TOKEN] = AOMMIN(
-      MAX_PROB,
-      ((prob_tmp[ONE_TOKEN_EOB] + prob_tmp[TWO_TOKEN_PLUS_EOB]) << 8) / scale);
+  prob_head[EOB_TOKEN] = ((prob_tmp[ONE_TOKEN_EOB] + prob_tmp[TWO_TOKEN_PLUS_EOB]) << 15) / scale;
 
-  prob_tail[TWO_TOKEN] = AOMMIN(MAX_PROB, cdf_tail[0] >> (CDF_PROB_BITS - 8));
+  prob_tail[TWO_TOKEN] = cdf_tail[0];
   for (r = TWO_TOKEN + 1; r < EOB_TOKEN; ++r) {
     prob_tail[r] = cdf_tail[r - TWO_TOKEN] - cdf_tail[r - TWO_TOKEN - 1];
-    prob_tail[r] = AOMMIN(MAX_PROB, prob_tail[r] >> (CDF_PROB_BITS - 8));
   }
 }
 
@@ -229,20 +218,20 @@ void av1_fill_token_costs(av1_coeff_cost *c,
                             cdf_tail[t][i][j][k][l]);
 
             c[t][i][j][k][1][l][ZERO_TOKEN] =
-                av1_cost_bit(prob_head[ZERO_TOKEN], 0);
+                av1_cost_bit_cdf(prob_head[ZERO_TOKEN], 0);
             c[t][i][j][k][0][l][ZERO_TOKEN] = c[t][i][j][k][1][l][ZERO_TOKEN];
             c[t][i][j][k][0][l][ONE_TOKEN] =
-                av1_cost_bit(prob_head[ONE_TOKEN], 0);
+                av1_cost_bit_cdf(prob_head[ONE_TOKEN], 0);
             c[t][i][j][k][1][l][ONE_TOKEN] = c[t][i][j][k][0][l][ONE_TOKEN];
             c[t][i][j][k][0][l][EOB_TOKEN] =
-                av1_cost_bit(prob_head[EOB_TOKEN], 0);
+                av1_cost_bit_cdf(prob_head[EOB_TOKEN], 0);
             c[t][i][j][k][1][l][EOB_TOKEN] = c[t][i][j][k][0][l][EOB_TOKEN];
 
             // Now look at the tail
-            int two_plus_cost = av1_cost_bit(prob_head[TWO_TOKEN], 0);
+            int two_plus_cost = av1_cost_bit_cdf(prob_head[TWO_TOKEN], 0);
             for (r = TWO_TOKEN; r < EOB_TOKEN; ++r) {
               c[t][i][j][k][0][l][r] =
-                  two_plus_cost + av1_cost_bit(prob_tail[r], 0);
+                  two_plus_cost + av1_cost_bit_cdf(prob_tail[r], 0);
               c[t][i][j][k][1][l][r] = c[t][i][j][k][0][j][r];
             }
           }
