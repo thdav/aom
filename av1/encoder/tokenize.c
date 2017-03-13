@@ -391,12 +391,12 @@ static INLINE void add_token(
   ++counts[token];
 }
 
+#endif
 static INLINE int get_tx_eob(const struct segmentation *seg, int segment_id,
                              TX_SIZE tx_size) {
   const int eob_max = tx_size_2d[tx_size];
   return segfeature_active(seg, segment_id, SEG_LVL_SKIP) ? 0 : eob_max;
 }
-#endif
 
 #if CONFIG_PALETTE
 void av1_tokenize_palette_sb(const AV1_COMP *cpi,
@@ -463,9 +463,9 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
 #if CONFIG_SUPERTX
   const int segment_id = AOMMIN(mbmi->segment_id, mbmi->segment_id_supertx);
 #else
-  const int segment_id = mbmi->segment_id;
 #endif  // CONFIG_SUEPRTX
 #endif  // !CONFIG_NEW_TOKENSET
+  const int segment_id = mbmi->segment_id;
   const int16_t *scan, *nb;
   const int block_raster_idx = av1_block_index_to_raster_order(tx_size, block);
   const TX_TYPE tx_type = get_tx_type(type, xd, block_raster_idx, tx_size);
@@ -506,8 +506,9 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
                                     ec_ctx->coef_cdfs[tx_size][type][ref];
 #endif
   int skip_eob = 0;
-  const int seg_eob = get_tx_eob(&cpi->common.seg, segment_id, tx_size);
 #endif
+  const int seg_eob = get_tx_eob(&cpi->common.seg, segment_id, tx_size);
+  const int max_eob = tx_size_2d[tx_size];
   unsigned int(*const eob_branch)[COEFF_CONTEXTS] =
       td->counts->eob_branch[txsize_sqr_map[tx_size]][type][ref];
   const uint8_t *const band = get_band_translate(tx_size);
@@ -519,6 +520,7 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
   scan = scan_order->scan;
   nb = scan_order->neighbors;
   c = 0;
+  if (seg_eob != max_eob) fprintf(stderr,"seg_eob=%d max_eob=%d tx_size = %d\n",seg_eob, max_eob, tx_size);
 
 #if CONFIG_NEW_TOKENSET
   if (eob == 0)
@@ -536,7 +538,7 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
       ++counts[band[c]][pt][ZERO_TOKEN];
       token_cache[scan[c]] = 0;
     } else {
-      is_eob = (c + 1 == eob);
+      is_eob = (c + 1 == eob) ? (c + 1 == seg_eob ? 2 : 1) : 0;
 
       av1_get_token_extra(v, &token, &extra);
 
@@ -545,7 +547,7 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
 
       ++counts[band[c]][pt][token];
       ++eob_branch[band[c]][pt];
-      counts[band[c]][pt][EOB_TOKEN] += is_eob;
+      counts[band[c]][pt][EOB_TOKEN] += !!is_eob;
 
       token_cache[scan[c]] = av1_pt_energy_class[token];
     }
