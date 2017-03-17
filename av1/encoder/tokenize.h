@@ -130,7 +130,7 @@ static INLINE int av1_get_token_cost(int v, int16_t *token, int cat6_bits) {
     *token = CATEGORY6_TOKEN;
 //    return (cat6_bits + 1)* 512;
     extrabits = abs(v) - CAT6_MIN_VAL;
-    return 8 * 512 /*av1_cat6_low_cost[extrabits & 0xff]*/ +
+    return av1_cat6_low_cost[extrabits & 0xff] +
            av1_cat6_high_cost[extrabits >> 8] -
            av1_cat6_skipped_bits_discount[18 - cat6_bits];
   }
