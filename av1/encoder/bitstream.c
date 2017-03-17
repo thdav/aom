@@ -864,7 +864,7 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
             --skip_bits;
             assert(!bb);
           } else {
-            aom_write_record(w, bb, pb[index], token_stats);
+            aom_write_bit_record(w, bb, token_stats);
           }
         }
       }
@@ -960,7 +960,7 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
             --skip_bits;
             assert(!bb);
           } else {
-            aom_write_record(w, bb, pb[index], token_stats);
+            aom_write_bit_record(w, bb, pb[index], token_stats);
           }
         }
       }
