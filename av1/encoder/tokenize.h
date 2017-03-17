@@ -124,7 +124,7 @@ static INLINE int16_t av1_get_token(int v) {
 }
 
 static INLINE int av1_get_token_cost(int v, int16_t *token, int cat6_bits) {
-  static int extra_bit_nums[10] = {0, 1, 1, 1, 1, 1+1, 2+1, 3+1, 4+1, 5+1};
+//  static int extra_bit_nums[10] = {0, 1, 1, 1, 1, 1+1, 2+1, 3+1, 4+1, 5+1};
   if (v >= CAT6_MIN_VAL || v <= -CAT6_MIN_VAL) {
     EXTRABIT extrabits;
     *token = CATEGORY6_TOKEN;
@@ -135,7 +135,7 @@ static INLINE int av1_get_token_cost(int v, int16_t *token, int cat6_bits) {
 //           av1_cat6_skipped_bits_discount[18 - cat6_bits];
   }
   *token = av1_dct_cat_lt_10_value_tokens[v].token;
-  return extra_bit_nums[*token] * 512;
+  return av1_dct_cat_lt_10_value_cost[v];
 }
 
 #ifdef __cplusplus
