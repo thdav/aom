@@ -46,8 +46,7 @@
 
 static INLINE int read_coeff(const aom_prob *probs, int n, aom_reader *r) {
   int i, val = 0;
-  probs;
-  if (n>5)
+  if (0)
     for (i = 0; i < n; ++i) val = (val << 1) | aom_read_bit(r, ACCT_STR);
   else
     for (i = 0; i < n; ++i) val = (val << 1) | aom_read(r, probs[i], ACCT_STR);
