@@ -1147,6 +1147,7 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
       int16_t prev_t;
       cost = av1_get_token_cost(v, &prev_t, cat6_bits);
 #if CONFIG_NEW_TOKENSET
+      cost += av1_cost_bit(blockz_probs[pt], 1);
       cost += (*token_costs)[!prev_t][pt][prev_t];
 #else
       cost += (*token_costs)[0][pt][prev_t];
@@ -1189,6 +1190,7 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
 #endif
       cost = av1_get_token_cost(v, &tok, cat6_bits);
 #if CONFIG_NEW_TOKENSET
+      cost += av1_cost_bit(blockz_probs[pt], 1);
       cost += (*token_costs)[!tok][pt][tok];
 #else
       cost += (*token_costs)[0][pt][tok];
