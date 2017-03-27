@@ -77,6 +77,12 @@ typedef struct av1_token_state {
   int rate;
   int16_t next;
   int16_t token;
+#if CONFIG_NEW_TOKENSET
+  int16_t token_head;
+  int16_t token_tail;
+  int8_t is_eob;
+  int8_t is_dc;
+#endif
   tran_low_t qc;
   tran_low_t dqc;
   uint8_t best_index;
@@ -85,7 +91,8 @@ typedef struct av1_token_state {
 // These numbers are empirically obtained.
 static const int plane_rd_mult[REF_TYPES][PLANE_TYPES] = {
 #if CONFIG_EC_ADAPT
-  { 10, 7 }, { 8, 5 },
+  { 8, 8 }, { 8, 9 },
+//  { 10, 7 }, { 8, 5 },
 #else
   { 10, 6 }, { 8, 5 },
 #endif
@@ -97,16 +104,57 @@ static const int plane_rd_mult[REF_TYPES][PLANE_TYPES] = {
     rd_cost1 = RDCOST(rdmult, rddiv, rate1, error1); \
   }
 
+#if CONFIG_NEW_TOKENSET
+static INLINE int av1_entropy_cost(int p)
+{
+  int pround = ROUND_POWER_OF_TWO(p, (CDF_PROB_BITS - 8));
+  if (pround) {
+  return av1_cost_zero(pround);
+  } else {
+    return av1_cost_zero(p) + ((CDF_PROB_BITS - 8) << AV1_PROB_COST_SHIFT);
+  }
+}
+static INLINE int av1_cost_val15(aom_cdf_prob* cdf, int val)
+{
+  return av1_entropy_cost(val ? cdf[val] - cdf[val-1] : cdf[0]);
+}
+
+static INLINE void set_head_and_tail(av1_token_state *token_state)
+{
+  int16_t token = token_state->token;
+  int is_eob = 0;//token_state->is_eob && token;
+  int is_dc = token_state->is_dc;
+  int token_head = AOMMIN(token, TWO_TOKEN);
+  token_state->token_tail = token - token_head;
+  token_state->token_head = (is_dc && is_eob) ? 0 : 2 * token_head - is_eob + is_dc;
+}
+
+#endif
+
+static inline int get_eob_cost(aom_cdf_prob cdf_head[CDF_SIZE(ENTROPY_TOKENS)], int is_dc)
+{
+  // Just base on ONE_TOKEN
+  int prob = cdf_head[is_dc + ONE_TOKEN_EOB] - cdf_head[is_dc + ONE_TOKEN_EOB - 1];
+  return av1_entropy_cost(prob);
+}
 static inline int64_t get_token_bit_costs(
     unsigned int token_costs[2][COEFF_CONTEXTS][ENTROPY_TOKENS], int skip_eob,
-    int ctx, int token) {
-#if CONFIG_NEW_TOKENSET
+    int ctx, av1_token_state *token_state,  aom_cdf_prob cdf_head[CDF_SIZE(ENTROPY_TOKENS)],
+                                            aom_cdf_prob cdf_tail[CDF_SIZE(ENTROPY_TOKENS)])
+{
+  int16_t token = token_state->token;
+  int is_dc = token_state->is_dc;
+
+  if (token == EOB_TOKEN) return get_eob_cost(cdf_head, is_dc);
+  set_head_and_tail(token_state);
+  int cost0 = av1_cost_val15(cdf_head, token_state->token_head);
+  int cost = cost0;
+
+  if (token > ONE_TOKEN) cost += av1_cost_val15(cdf_tail, token_state->token_tail);
   (void)skip_eob;
-  return token_costs[token == ZERO_TOKEN || token == EOB_TOKEN][ctx][token];
-#else
-  return token_costs[skip_eob][ctx][token];
-#endif
+  return cost;
 }
+
 
 int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
                    TX_SIZE tx_size, int ctx) {
@@ -132,16 +180,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
   const int16_t *const nb = scan_order->neighbors;
   int dqv;
   const int shift = get_tx_scale(tx_size);
-#if CONFIG_AOM_QM
-  int seg_id = xd->mi[0]->mbmi.segment_id;
-  const qm_val_t *iqmatrix = pd->seg_iqmatrix[seg_id][!ref][tx_size];
-#endif
-#if CONFIG_NEW_QUANT
-  int dq = get_dq_profile_from_ctx(mb->qindex, ctx, ref, plane_type);
-  const dequant_val_type_nuq *dequant_val = pd->dequant_val_nuq[dq];
-#elif !CONFIG_AOM_QM
   const int dq_step[2] = { dequant_ptr[0] >> shift, dequant_ptr[1] >> shift };
-#endif  // CONFIG_NEW_QUANT
   int next = eob, sz = 0;
   const int64_t rdmult = (mb->rdmult * plane_rd_mult[ref][plane_type]) >> 1;
   const int64_t rddiv = mb->rddiv;
@@ -152,17 +191,30 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
   int best, band = (eob < default_eob) ? band_translate[eob]
                                        : band_translate[eob - 1];
   int pt, i, final_eob;
-#if CONFIG_AOM_HIGHBITDEPTH
-  const int cat6_bits = av1_get_cat6_extrabits_size(tx_size, xd->bd);
-#else
   const int cat6_bits = av1_get_cat6_extrabits_size(tx_size, 8);
-#endif
   unsigned int(*token_costs)[2][COEFF_CONTEXTS][ENTROPY_TOKENS] =
       mb->token_costs[txsize_sqr_map[tx_size]][plane_type][ref];
   const uint16_t *band_counts = &band_count_table[tx_size][band];
   uint16_t band_left = eob - band_cum_count_table[tx_size][band] + 1;
+  int next_band = band;
   int shortcut = 0;
   int next_shortcut = 0;
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *ec_ctx = cpi->common.fc;
+#endif
+//  aom_prob *blockz_probs =
+//      cm->fc->blockzero_probs[txsize_sqr_map[tx_size]][type][ref];
+  aom_cdf_prob(
+      *const coef_head_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
+      ec_ctx->coef_head_cdfs[txsize_sqr_map[tx_size]][plane_type][ref];
+  aom_cdf_prob(
+      *const coef_tail_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
+      ec_ctx->coef_tail_cdfs[txsize_sqr_map[tx_size]][plane_type][ref];
+
+  aom_cdf_prob(*cdf_head)[CDF_SIZE(ENTROPY_TOKENS)];
+  aom_cdf_prob(*cdf_tail)[CDF_SIZE(ENTROPY_TOKENS)];
 
   assert((mb->qindex == 0) ^ (xd->lossless[xd->mi[0]->mbmi.segment_id] == 0));
 
@@ -182,6 +234,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
 
   for (i = 0; i < eob; i++) {
     const int rc = scan[i];
+    // Get the extra bits and sign bits for all po
     tokens[i][0].rate = av1_get_token_cost(qcoeff[rc], &t0, cat6_bits);
     tokens[i][0].token = t0;
     token_cache[rc] = av1_pt_energy_class[t0];
@@ -191,18 +244,19 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
     int base_bits, dx;
     int64_t d2;
     const int rc = scan[i];
-    int x = qcoeff[rc];
-#if CONFIG_AOM_QM
-    int iwt = iqmatrix[rc];
+    int qval = qcoeff[rc];
     dqv = dequant_ptr[rc != 0];
-    dqv = ((iwt * (int)dqv) + (1 << (AOM_QM_BITS - 1))) >> AOM_QM_BITS;
-#else
-    dqv = dequant_ptr[rc != 0];
-#endif
     next_shortcut = shortcut;
 
+    tokens[next][0].is_eob = tokens[tokens[next][0].next][tokens[next][0].best_index].token == EOB_TOKEN;
+    tokens[next][1].is_eob = tokens[tokens[next][1].next][tokens[next][1].best_index].token == EOB_TOKEN;
+    tokens[next][0].is_dc = 0;
+    tokens[next][1].is_dc = 0;
+
+    next_band = next < default_eob ? band_translate[next] : band_translate[eob - 1];
+
     /* Only add a trellis state for non-zero coefficients. */
-    if (UNLIKELY(x)) {
+    if (UNLIKELY(qval)) {
       error0 = tokens[next][0].error;
       error1 = tokens[next][1].error;
       /* Evaluate the first possibility for this state. */
@@ -212,35 +266,34 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
       if (next_shortcut) {
         /* Consider both possible successor states. */
         if (next < default_eob) {
-          pt = get_coef_context(nb, token_cache, i + 1);
+          pt = get_coef_context(nb, token_cache, next);// should be next??
+          cdf_head = &coef_head_cdfs[next_band][pt];
+          cdf_tail = &coef_tail_cdfs[next_band][pt];
           rate0 +=
-              get_token_bit_costs(*token_costs, 0, pt, tokens[next][0].token);
+              get_token_bit_costs(*token_costs, 0, pt, &tokens[next][0], *cdf_head, *cdf_tail);
           rate1 +=
-              get_token_bit_costs(*token_costs, 0, pt, tokens[next][1].token);
+              get_token_bit_costs(*token_costs, 0, pt, &tokens[next][1], *cdf_head, *cdf_tail);
         }
         UPDATE_RD_COST();
         /* And pick the best. */
         best = rd_cost1 < rd_cost0;
       } else {
         if (next < default_eob) {
-          pt = get_coef_context(nb, token_cache, i + 1);
+          pt = get_coef_context(nb, token_cache, next);
+          cdf_head = &coef_head_cdfs[next_band][pt];
+          cdf_tail = &coef_tail_cdfs[next_band][pt];
           rate0 +=
-              get_token_bit_costs(*token_costs, 0, pt, tokens[next][0].token);
+              get_token_bit_costs(*token_costs, 0, pt, &tokens[next][0], *cdf_head, *cdf_tail);
         }
         best = 0;
       }
 
       dx = (dqcoeff[rc] - coeff[rc]) * (1 << shift);
-#if CONFIG_AOM_HIGHBITDEPTH
-      if (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH) {
-        dx >>= xd->bd - 8;
-      }
-#endif  // CONFIG_AOM_HIGHBITDEPTH
       d2 = (int64_t)dx * dx;
       tokens[i][0].rate += (best ? rate1 : rate0);
-      tokens[i][0].error = d2 + (best ? error1 : error0);
+      tokens[i][0].error = d2 + (best ? error1 : error0);// this coeff error plus best next error
       tokens[i][0].next = next;
-      tokens[i][0].qc = x;
+      tokens[i][0].qc = qval;
       tokens[i][0].dqc = dqcoeff[rc];
       tokens[i][0].best_index = best;
 
@@ -249,37 +302,20 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
       rate1 = tokens[next][1].rate;
 
       // The threshold of 3 is empirically obtained.
-      if (UNLIKELY(abs(x) > 3)) {
+      if (UNLIKELY(abs(qval) > 3)) {
         shortcut = 0;
       } else {
-#if CONFIG_NEW_QUANT
-        shortcut = ((av1_dequant_abscoeff_nuq(abs(x), dqv,
-                                              dequant_val[band_translate[i]]) >
-                     (abs(coeff[rc]) << shift)) &&
-                    (av1_dequant_abscoeff_nuq(abs(x) - 1, dqv,
-                                              dequant_val[band_translate[i]]) <
-                     (abs(coeff[rc]) << shift)));
-#else  // CONFIG_NEW_QUANT
-#if CONFIG_AOM_QM
-        if ((abs(x) * dequant_ptr[rc != 0] * iwt >
-             ((abs(coeff[rc]) << shift) << AOM_QM_BITS)) &&
-            (abs(x) * dequant_ptr[rc != 0] * iwt <
-             (((abs(coeff[rc]) << shift) + dequant_ptr[rc != 0])
-              << AOM_QM_BITS)))
-#else
-        if ((abs(x) * dequant_ptr[rc != 0] > (abs(coeff[rc]) << shift)) &&
-            (abs(x) * dequant_ptr[rc != 0] <
+        if ((abs(qval) * dequant_ptr[rc != 0] > (abs(coeff[rc]) << shift)) &&
+            (abs(qval) * dequant_ptr[rc != 0] <
              (abs(coeff[rc]) << shift) + dequant_ptr[rc != 0]))
-#endif  // CONFIG_AOM_QM
           shortcut = 1;
         else
           shortcut = 0;
-#endif  // CONFIG_NEW_QUANT
       }
 
       if (shortcut) {
-        sz = -(x < 0);
-        x -= 2 * sz + 1;
+        sz = -(qval < 0);
+        qval -= 2 * sz + 1;
       } else {
         tokens[i][1] = tokens[i][0];
         next = i;
@@ -293,7 +329,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
       }
 
       /* Consider both possible successor states. */
-      if (!x) {
+      if (!qval) {
         /* If we reduced this coefficient to zero, check to see if
          *  we need to move the EOB back here.
          */
@@ -301,7 +337,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
         t1 = tokens[next][1].token == EOB_TOKEN ? EOB_TOKEN : ZERO_TOKEN;
         base_bits = 0;
       } else {
-        base_bits = av1_get_token_cost(x, &t0, cat6_bits);
+        base_bits = av1_get_token_cost(qval, &t0, cat6_bits);
         t1 = t0;
       }
 
@@ -309,15 +345,19 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
         if (LIKELY(next < default_eob)) {
           if (t0 != EOB_TOKEN) {
             token_cache[rc] = av1_pt_energy_class[t0];
-            pt = get_coef_context(nb, token_cache, i + 1);
-            rate0 += get_token_bit_costs(*token_costs, !x, pt,
-                                         tokens[next][0].token);
+            pt = get_coef_context(nb, token_cache, next);
+            cdf_head = &coef_head_cdfs[next_band][pt];
+            cdf_tail = &coef_tail_cdfs[next_band][pt];
+            rate0 += get_token_bit_costs(*token_costs, !qval, pt,
+                                         &tokens[next][0], *cdf_head, *cdf_tail);
           }
           if (t1 != EOB_TOKEN) {
             token_cache[rc] = av1_pt_energy_class[t1];
-            pt = get_coef_context(nb, token_cache, i + 1);
-            rate1 += get_token_bit_costs(*token_costs, !x, pt,
-                                         tokens[next][1].token);
+            pt = get_coef_context(nb, token_cache, next);
+            cdf_head = &coef_head_cdfs[next_band][pt];
+            cdf_tail = &coef_tail_cdfs[next_band][pt];
+            rate1 += get_token_bit_costs(*token_costs, !qval, pt,
+                                         &tokens[next][1], *cdf_head, *cdf_tail);
           }
         }
 
@@ -328,65 +368,35 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
         // The two states in next stage are identical.
         if (next < default_eob && t0 != EOB_TOKEN) {
           token_cache[rc] = av1_pt_energy_class[t0];
-          pt = get_coef_context(nb, token_cache, i + 1);
+          pt = get_coef_context(nb, token_cache, next);
+          cdf_head = &coef_head_cdfs[next_band][pt];
+          cdf_tail = &coef_tail_cdfs[next_band][pt];
           rate0 +=
-              get_token_bit_costs(*token_costs, !x, pt, tokens[next][0].token);
+              get_token_bit_costs(*token_costs, !qval, pt, &tokens[next][0], *cdf_head, *cdf_tail);
         }
         best = 0;
       }
-
-#if CONFIG_NEW_QUANT
-      dx = av1_dequant_coeff_nuq(x, dqv, dequant_val[band_translate[i]]) -
-           (coeff[rc] << shift);
-#if CONFIG_AOM_HIGHBITDEPTH
-      if (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH) {
-        dx >>= xd->bd - 8;
-      }
-#endif  // CONFIG_AOM_HIGHBITDEPTH
-#else   // CONFIG_NEW_QUANT
-#if CONFIG_AOM_HIGHBITDEPTH
-      if (xd->cur_buf->flags & YV12_FLAG_HIGHBITDEPTH) {
-        dx -= ((dqv >> (xd->bd - 8)) + sz) ^ sz;
-      } else {
-        dx -= (dqv + sz) ^ sz;
-      }
-#else
       dx -= (dqv + sz) ^ sz;
-#endif  // CONFIG_AOM_HIGHBITDEPTH
-#endif  // CONFIG_NEW_QUANT
       d2 = (int64_t)dx * dx;
 
       tokens[i][1].rate = base_bits + (best ? rate1 : rate0);
       tokens[i][1].error = d2 + (best ? error1 : error0);
       tokens[i][1].next = next;
       tokens[i][1].token = best ? t1 : t0;
-      tokens[i][1].qc = x;
+      tokens[i][1].qc = qval;
 
-      if (x) {
-#if CONFIG_NEW_QUANT
-        tokens[i][1].dqc = av1_dequant_abscoeff_nuq(
-            abs(x), dqv, dequant_val[band_translate[i]]);
-        tokens[i][1].dqc = shift ? ROUND_POWER_OF_TWO(tokens[i][1].dqc, shift)
-                                 : tokens[i][1].dqc;
-        if (sz) tokens[i][1].dqc = -tokens[i][1].dqc;
-#else
+      if (qval) {
 // The 32x32 transform coefficient uses half quantization step size.
 // Account for the rounding difference in the dequantized coefficeint
 // value when the quantization index is dropped from an even number
 // to an odd number.
-
-#if CONFIG_AOM_QM
-        tran_low_t offset = dqv >> shift;
-#else
         tran_low_t offset = dq_step[rc != 0];
-#endif
-        if (shift & x) offset += (dqv & 0x01);
+        if (shift & qval) offset += (dqv & 0x01);
 
         if (sz == 0)
           tokens[i][1].dqc = dqcoeff[rc] - offset;
         else
           tokens[i][1].dqc = dqcoeff[rc] + offset;
-#endif  // CONFIG_NEW_QUANT
       } else {
         tokens[i][1].dqc = 0;
       }
@@ -400,14 +410,18 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
        */
       t0 = tokens[next][0].token;
       t1 = tokens[next][1].token;
-      pt = get_coef_context(nb, token_cache, i + 1);
+      pt = get_coef_context(nb, token_cache, next);//next?
       /* Update the cost of each path if we're past the EOB token. */
       if (t0 != EOB_TOKEN) {
-        tokens[next][0].rate += get_token_bit_costs(*token_costs, 1, pt, t0);
+        cdf_head = &coef_head_cdfs[next_band][pt];
+        cdf_tail = &coef_tail_cdfs[next_band][pt];
+        tokens[next][0].rate += get_token_bit_costs(*token_costs, 1, pt, &tokens[next][0], *cdf_head, *cdf_tail);
         tokens[next][0].token = ZERO_TOKEN;
       }
       if (t1 != EOB_TOKEN) {
-        tokens[next][1].rate += get_token_bit_costs(*token_costs, 1, pt, t1);
+        cdf_head = &coef_head_cdfs[next_band][pt];
+        cdf_tail = &coef_tail_cdfs[next_band][pt];
+        tokens[next][1].rate += get_token_bit_costs(*token_costs, 1, pt, &tokens[next][1], *cdf_head, *cdf_tail);
         tokens[next][1].token = ZERO_TOKEN;
       }
       tokens[i][0].best_index = tokens[i][1].best_index = 0;
@@ -421,6 +435,14 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
       --token_costs;
     }
   }
+  pt = get_coef_context(nb, token_cache, next);//next?
+  next_band = next < default_eob ? band_translate[next] : band_translate[eob - 1];
+  tokens[next][0].is_eob = tokens[tokens[next][0].next][tokens[next][0].best_index].token == EOB_TOKEN;
+  tokens[next][1].is_eob = tokens[tokens[next][1].next][tokens[next][1].best_index].token == EOB_TOKEN;
+  tokens[next][0].is_dc = next == 0;
+  tokens[next][1].is_dc = next == 0;
+  cdf_head = &coef_head_cdfs[next_band][pt];
+  cdf_tail = &coef_tail_cdfs[next_band][pt];
 
   /* Now pick the best path through the whole trellis. */
   rate0 = tokens[next][0].rate;
@@ -429,24 +451,26 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
   error1 = tokens[next][1].error;
   t0 = tokens[next][0].token;
   t1 = tokens[next][1].token;
-  rate0 += get_token_bit_costs(*token_costs, 0, ctx, t0);
-  rate1 += get_token_bit_costs(*token_costs, 0, ctx, t1);
+
+  rate0 += get_token_bit_costs(*token_costs, 0, ctx, &tokens[next][0], *cdf_head, *cdf_tail);
+  rate1 += get_token_bit_costs(*token_costs, 0, ctx, &tokens[next][1], *cdf_head, *cdf_tail);
   UPDATE_RD_COST();
   best = rd_cost1 < rd_cost0;
 
   final_eob = -1;
 
   for (i = next; i < eob; i = next) {
-    const int x = tokens[i][best].qc;
+    const int qval = tokens[i][best].qc;
     const int rc = scan[i];
-    if (x) final_eob = i;
-    qcoeff[rc] = x;
+    if (qval) final_eob = i;
+    qcoeff[rc] = qval;
     dqcoeff[rc] = tokens[i][best].dqc;
 
     next = tokens[i][best].next;
     best = tokens[i][best].best_index;
   }
   final_eob++;
+
 
   mb->plane[plane].eobs[block] = final_eob;
   assert(final_eob <= default_eob);
