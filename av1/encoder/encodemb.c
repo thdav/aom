@@ -91,7 +91,7 @@ typedef struct av1_token_state {
 // These numbers are empirically obtained.
 static const int plane_rd_mult[REF_TYPES][PLANE_TYPES] = {
 #if CONFIG_EC_ADAPT
-  { 9, 7 }, { 8, 5 },
+  { 10, 7 }, { 8, 5 },
 //  { 10, 7 }, { 8, 5 },
 #else
   { 10, 6 }, { 8, 5 },
@@ -253,7 +253,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
     tokens[next][0].is_dc = 0;
     tokens[next][1].is_dc = 0;
 
-    next_band = next < default_eob ? band_translate[next] : band_translate[eob - 1];
+    next_band = next < default_eob ? band_translate[i + 1] : band_translate[eob - 1];
 
     /* Only add a trellis state for non-zero coefficients. */
     if (UNLIKELY(qval)) {
