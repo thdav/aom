@@ -85,7 +85,7 @@ typedef struct av1_token_state {
 // These numbers are empirically obtained.
 static const int plane_rd_mult[REF_TYPES][PLANE_TYPES] = {
 #if CONFIG_EC_ADAPT
-  { 9, 7 }, { 8, 5 },
+  { 8, 7 }, { 8, 5 },
 #else
   { 10, 6 }, { 8, 5 },
 #endif
