@@ -1118,6 +1118,132 @@ static int64_t av1_block_error2_c(const tran_low_t *coeff,
  * can skip this if the last coefficient in this transform block, e.g. the
  * 16th coefficient in a 4x4 block or the 64th coefficient in a 8x8 block,
  * were non-zero). */
+#if 1
+static INLINE int av1_entropy_cost(int p)
+{
+  int pround = ROUND_POWER_OF_TWO(p, (CDF_PROB_BITS - 8));
+  if (pround) {
+  return av1_cost_zero(pround);
+  } else {
+    return av1_cost_zero(p) + ((CDF_PROB_BITS - 8) << AV1_PROB_COST_SHIFT);
+  }
+}
+static INLINE int av1_cost_val15(aom_cdf_prob* cdf, int val)
+{
+  return av1_entropy_cost(val ? cdf[val] - cdf[val-1] : cdf[0]);
+}
+
+int av1_dummy_encode(aom_cdf_prob* cdf, int val, int nsymbs)
+{
+  int cost = av1_cost_val15(cdf, val);
+  return cost;
+}
+
+int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
+                    int block, TX_SIZE tx_size, const SCAN_ORDER *scan_order,
+                    const ENTROPY_CONTEXT *a, const ENTROPY_CONTEXT *l,
+                    int use_fast_coef_costing) {
+  MACROBLOCKD *const xd = &x->e_mbd;
+  MB_MODE_INFO *mbmi = &xd->mi[0]->mbmi;
+  const struct macroblock_plane *p = &x->plane[plane];
+  const struct macroblockd_plane *pd = &xd->plane[plane];
+  const PLANE_TYPE type = pd->plane_type;
+  const uint16_t *band_count = &band_count_table[tx_size][1];
+  const int eob = p->eobs[block];
+  const tran_low_t *const qcoeff = BLOCK_OFFSET(p->qcoeff, block);
+  const int tx_size_ctx = txsize_sqr_map[tx_size];
+  unsigned int(*token_costs)[2][COEFF_CONTEXTS][ENTROPY_TOKENS] =
+      x->token_costs[tx_size_ctx][type][is_inter_block(mbmi)];
+  uint8_t token_cache[MAX_TX_SQUARE];
+  int pt = combine_entropy_contexts(*a, *l);
+  int c, cost;
+  const int16_t *scan = scan_order->scan;
+  const int16_t *nb = scan_order->neighbors;
+
+  const int ref = is_inter_block(mbmi);
+#if CONFIG_EC_ADAPT
+  FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
+#elif CONFIG_EC_MULTISYMBOL
+  FRAME_CONTEXT *ec_ctx = cpi->common.fc;
+#endif
+  aom_prob *blockz_probs =
+      cm->fc->blockzero_probs[txsize_sqr_map[tx_size]][type][ref];
+  aom_cdf_prob(
+      *const coef_head_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
+      ec_ctx->coef_head_cdfs[txsize_sqr_map[tx_size]][type][ref];
+  aom_cdf_prob(
+      *const coef_tail_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
+      ec_ctx->coef_tail_cdfs[txsize_sqr_map[tx_size]][type][ref];
+
+  aom_cdf_prob(*cdf_head)[CDF_SIZE(ENTROPY_TOKENS)];
+  aom_cdf_prob(*cdf_tail)[CDF_SIZE(ENTROPY_TOKENS)];
+  const uint8_t *band_translate = get_band_translate(tx_size);
+  const int max_eob = tx_size_2d[tx_size];
+
+#if CONFIG_AOM_HIGHBITDEPTH
+  const int cat6_bits = av1_get_cat6_extrabits_size(tx_size, xd->bd);
+#else
+  const int cat6_bits = av1_get_cat6_extrabits_size(tx_size, 8);
+#endif  // CONFIG_AOM_HIGHBITDEPTH
+
+#if !CONFIG_VAR_TX && !CONFIG_SUPERTX
+  // Check for consistency of tx_size with mode info
+  assert(tx_size == get_tx_size(plane, xd));
+#endif  // !CONFIG_VAR_TX && !CONFIG_SUPERTX
+  (void)cm;
+
+  cdf_head = &coef_head_cdfs[0][pt];
+  cdf_tail = &coef_tail_cdfs[0][pt];
+
+  if (eob == 0) {
+    // single eob token
+    cost = av1_dummy_encode(*cdf_head, 0, HEAD_TOKENS + 1);
+  } else {
+    int is_eob = eob == 1;
+    int band_left = *band_count++;
+    uint8_t band = *band_translate++;
+
+    // dc token
+    int v = qcoeff[0];
+    int16_t tok;
+    int comb_tok;
+    int extra_cost = av1_get_token_cost(v, &tok, cat6_bits);
+    cost = extra_cost;
+    comb_tok = 2 * AOMMIN(tok,2) - is_eob + 1;
+    cost += av1_dummy_encode(*cdf_head, comb_tok, HEAD_TOKENS + 1);
+    if (tok > 1) cost += av1_dummy_encode(*cdf_tail, tok - 2, TAIL_TOKENS);
+
+    token_cache[0] = av1_pt_energy_class[tok];
+    ++token_costs;
+
+    // ac tokens
+    for (c = 1; c < eob; c++) {
+      const int rc = scan[c];
+      band = *band_translate++;
+      is_eob = eob == c + 1;
+
+      v = qcoeff[rc];
+      cost += av1_get_token_cost(v, &tok, cat6_bits);
+      pt = get_coef_context(nb, token_cache, c);
+      cdf_head = &coef_head_cdfs[band][pt];
+      cdf_tail = &coef_tail_cdfs[band][pt];
+
+      comb_tok = 2 * AOMMIN(tok,2) - is_eob;
+      cost += (c == max_eob-1) ? 512 : av1_dummy_encode(*cdf_head, comb_tok, HEAD_TOKENS);
+      if (tok > 1) cost += av1_dummy_encode(*cdf_tail, tok - 2, TAIL_TOKENS);
+      token_cache[rc] = av1_pt_energy_class[tok];
+      if (!--band_left) {
+        band_left = *band_count++;
+        ++token_costs;
+      }
+    }
+  }
+
+
+  return cost;
+}
+
+#else
 int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
                     int block, TX_SIZE tx_size, const SCAN_ORDER *scan_order,
                     const ENTROPY_CONTEXT *a, const ENTROPY_CONTEXT *l,
@@ -1259,6 +1385,7 @@ int av1_cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
 
   return cost;
 }
+#endif
 #endif  // !CONFIG_PVQ || CONFIG_VAR_TX
 
 static void dist_block(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
