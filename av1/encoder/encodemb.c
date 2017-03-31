@@ -253,7 +253,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
     tokens[next][0].is_dc = 0;
     tokens[next][1].is_dc = 0;
 
-    next_band = next < default_eob ? band_translate[next] : band_translate[eob - 1];
+    next_band = next < default_eob ? band_translate[i + 1] : band_translate[eob - 1];
 
     /* Only add a trellis state for non-zero coefficients. */
     if (UNLIKELY(qval)) {
@@ -266,7 +266,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
       if (next_shortcut) {
         /* Consider both possible successor states. */
         if (next < default_eob) {
-          pt = get_coef_context(nb, token_cache, next);// should be next??
+          pt = get_coef_context(nb, token_cache, i + 1);// should be next??
           cdf_head = &coef_head_cdfs[next_band][pt];
           cdf_tail = &coef_tail_cdfs[next_band][pt];
           rate0 +=
@@ -279,7 +279,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
         best = rd_cost1 < rd_cost0;
       } else {
         if (next < default_eob) {
-          pt = get_coef_context(nb, token_cache, next);
+          pt = get_coef_context(nb, token_cache, i + 1);
           cdf_head = &coef_head_cdfs[next_band][pt];
           cdf_tail = &coef_tail_cdfs[next_band][pt];
           rate0 +=
@@ -345,7 +345,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
         if (LIKELY(next < default_eob)) {
           if (t0 != EOB_TOKEN) {
             token_cache[rc] = av1_pt_energy_class[t0];
-            pt = get_coef_context(nb, token_cache, next);
+            pt = get_coef_context(nb, token_cache, i + 1);
             cdf_head = &coef_head_cdfs[next_band][pt];
             cdf_tail = &coef_tail_cdfs[next_band][pt];
             rate0 += get_token_bit_costs(*token_costs, !qval, pt,
@@ -353,7 +353,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
           }
           if (t1 != EOB_TOKEN) {
             token_cache[rc] = av1_pt_energy_class[t1];
-            pt = get_coef_context(nb, token_cache, next);
+            pt = get_coef_context(nb, token_cache, i + 1);
             cdf_head = &coef_head_cdfs[next_band][pt];
             cdf_tail = &coef_tail_cdfs[next_band][pt];
             rate1 += get_token_bit_costs(*token_costs, !qval, pt,
@@ -368,7 +368,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
         // The two states in next stage are identical.
         if (next < default_eob && t0 != EOB_TOKEN) {
           token_cache[rc] = av1_pt_energy_class[t0];
-          pt = get_coef_context(nb, token_cache, next);
+          pt = get_coef_context(nb, token_cache, i + 1);
           cdf_head = &coef_head_cdfs[next_band][pt];
           cdf_tail = &coef_tail_cdfs[next_band][pt];
           rate0 +=
@@ -410,7 +410,7 @@ int av1_optimize_b(const AV1_COMMON *cm, MACROBLOCK *mb, int plane, int block,
        */
       t0 = tokens[next][0].token;
       t1 = tokens[next][1].token;
-      pt = get_coef_context(nb, token_cache, next);//next?
+      pt = get_coef_context(nb, token_cache, i + 1);//next?
       /* Update the cost of each path if we're past the EOB token. */
       if (t0 != EOB_TOKEN) {
         cdf_head = &coef_head_cdfs[next_band][pt];
