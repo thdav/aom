@@ -2024,7 +2024,16 @@ static int read_skip(AV1_COMMON *cm, const MACROBLOCKD *xd, int segment_id,
     return 1;
   } else {
     const int ctx = av1_get_skip_context(xd);
+#if CONFIG_NEW_MULTISYMBOL
+#if CONFIG_EC_ADAPT
+    FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
+#else
+    FRAME_CONTEXT *ec_ctx = cm->fc;
+#endif
+    const int skip = aom_read_symbol(r, ec_ctx->skip_cdfs[ctx], 2, ACCT_STR);
+#else
     const int skip = aom_read(r, cm->fc->skip_probs[ctx], ACCT_STR);
+#endif
     FRAME_COUNTS *counts = xd->counts;
     if (counts) ++counts->skip[ctx][skip];
     return skip;
@@ -4549,8 +4558,10 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
   for (k = 0; k < TXFM_PARTITION_CONTEXTS; ++k)
     av1_diff_update_prob(&r, &fc->txfm_partition_prob[k], ACCT_STR);
 #endif  // CONFIG_VAR_TX
+#if !CONFIG_NEW_MULTISYMBOL
   for (k = 0; k < SKIP_CONTEXTS; ++k)
     av1_diff_update_prob(&r, &fc->skip_probs[k], ACCT_STR);
+#endif
 
 #if CONFIG_DELTA_Q && !CONFIG_EC_ADAPT
   for (k = 0; k < DELTA_Q_PROBS; ++k)

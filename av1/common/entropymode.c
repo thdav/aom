@@ -1390,6 +1390,13 @@ static const aom_prob default_txfm_partition_probs[TXFM_PARTITION_CONTEXTS] = {
 #endif
 
 static const aom_prob default_skip_probs[SKIP_CONTEXTS] = { 192, 128, 64 };
+#if CONFIG_NEW_MULTISYMBOL
+static const aom_cdf_prob default_skip_cdfs[SKIP_CONTEXTS][CDF_SIZE(2)] = {
+  { 24576, 32768, 0},
+  { 16384, 32768, 0},
+  { 8192 , 32768, 0}
+};
+#endif
 
 #if CONFIG_DUAL_FILTER
 static const aom_prob default_switchable_interp_prob
@@ -2766,6 +2773,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
   av1_copy(fc->inter_mode_cdf, default_inter_mode_cdf);
   av1_copy(fc->intra_ext_tx_cdf, default_intra_ext_tx_cdf);
   av1_copy(fc->inter_ext_tx_cdf, default_inter_ext_tx_cdf);
+#if CONFIG_NEW_MULTISYMBOL
+  av1_copy(fc->skip_cdfs, default_skip_cdfs);
+#endif
 #if CONFIG_EXT_INTRA && CONFIG_INTRA_INTERP
   av1_copy(fc->intra_filter_cdf, default_intra_filter_cdf);
 #endif  // CONFIG_EXT_INTRA && CONFIG_INTRA_INTERP

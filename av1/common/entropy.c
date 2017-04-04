@@ -5663,6 +5663,7 @@ void av1_partial_adapt_probs(AV1_COMMON *cm, int mi_row, int mi_col) {
 static void av1_average_cdf(aom_cdf_prob *cdf_ptr[], aom_cdf_prob *fc_cdf_ptr,
                             int cdf_size, const int num_tiles) {
   int i, j;
+  int scale = 4;
   aom_cdf_prob last_val = 0;
   for (i = 0; i < cdf_size; ++i) {
     // Zero symbol counts for the next frame
@@ -5671,7 +5672,7 @@ static void av1_average_cdf(aom_cdf_prob *cdf_ptr[], aom_cdf_prob *fc_cdf_ptr,
     } else {
       int sum = 0;
       for (j = 0; j < num_tiles; ++j) sum += cdf_ptr[j][i];
-      fc_cdf_ptr[i] = sum / num_tiles;
+      fc_cdf_ptr[i] = ((scale - 1) * sum + fc_cdf_ptr[i]) / (scale * num_tiles);
     }
     last_val = fc_cdf_ptr[i];
   }
@@ -5756,6 +5757,15 @@ void av1_average_tile_intra_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[],
 #endif  // CONFIG_EXT_INTRA && CONFIG_INTRA_INTERP
 #if CONFIG_FILTER_INTRA
 #endif  // CONFIG_FILTER_INTRA
+
+//  fprintf(stderr,"probs=%d %d %d\n",fc->skip_cdfs[0][0],fc->skip_cdfs[1][0],fc->skip_cdfs[2][0]);
+  AVERAGE_TILE_CDFS(skip_cdfs)
+//  fprintf(stderr,"probs updated=%d %d %d\n",fc->skip_cdfs[0][0],fc->skip_cdfs[1][0],fc->skip_cdfs[2][0]);
+//  fprintf(stderr,"probs bin=%d %d %d\n",fc->skip_probs[0],fc->skip_probs[1],fc->skip_probs[2]);
+//  fprintf(stderr,"ratio=%f %f %f\n",fc->skip_probs[0]*128.0 / (double)fc->skip_cdfs[0][0],
+//      fc->skip_probs[1]*128.0 / (double)fc->skip_cdfs[1][0],
+//      fc->skip_probs[2]*128.0 / (double)fc->skip_cdfs[2][0]);
+
 }
 
 void av1_average_tile_inter_cdfs(AV1_COMMON *cm, FRAME_CONTEXT *fc,

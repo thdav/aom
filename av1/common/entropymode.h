@@ -210,6 +210,10 @@ typedef struct frame_contexts {
   aom_prob txfm_partition_prob[TXFM_PARTITION_CONTEXTS];
 #endif
   aom_prob skip_probs[SKIP_CONTEXTS];
+#if CONFIG_NEW_MULTISYMBOL
+  aom_cdf_prob skip_cdfs[SKIP_CONTEXTS][CDF_SIZE(2)];
+#endif
+
 #if CONFIG_REF_MV
   nmv_context nmvc[NMV_CONTEXTS];
 #else
