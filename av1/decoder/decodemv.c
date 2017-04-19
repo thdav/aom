@@ -1032,8 +1032,13 @@ static int read_mv_component(aom_reader *r, nmv_component *mvcomp, int usehp) {
 #endif
 
   // High precision part (if hp is not used, the default value of the hp is 1)
+#if CONFIG_NEW_MULTISYMBOL
+  hp = usehp ? aom_read_symbol(r, class0 ? mvcomp->class0_hp_cdf : mvcomp->hp_cdf, 2, ACCT_STR)
+             : 1;
+#else
   hp = usehp ? aom_read(r, class0 ? mvcomp->class0_hp : mvcomp->hp, ACCT_STR)
              : 1;
+#endif
 
   // Result
   mag += ((d << 3) | (fr << 1) | hp) + 1;

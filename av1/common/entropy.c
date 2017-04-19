@@ -6287,9 +6287,13 @@ void av1_average_tile_mv_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[],
     AVERAGE_TILE_CDFS(nmvc[j].joint_cdf)
 
     for (k = 0; k < 2; ++k) {
-      AVERAGE_TILE_CDFS(nmvc[j].comps[k].class_cdf);
-      AVERAGE_TILE_CDFS(nmvc[j].comps[k].class0_fp_cdf);
-      AVERAGE_TILE_CDFS(nmvc[j].comps[k].fp_cdf);
+      AVERAGE_TILE_CDFS(nmvc[j].comps[k].class_cdf)
+      AVERAGE_TILE_CDFS(nmvc[j].comps[k].class0_fp_cdf)
+      AVERAGE_TILE_CDFS(nmvc[j].comps[k].fp_cdf)
+#if CONFIG_NEW_MULTISYMBOL
+      AVERAGE_TILE_CDFS(nmvc[j].comps[k].hp_cdf)
+      AVERAGE_TILE_CDFS(nmvc[j].comps[k].class0_hp_cdf)
+#endif
     }
   }
 #else
@@ -6299,6 +6303,10 @@ void av1_average_tile_mv_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[],
     AVERAGE_TILE_CDFS(nmvc.comps[k].class_cdf)
     AVERAGE_TILE_CDFS(nmvc.comps[k].class0_fp_cdf)
     AVERAGE_TILE_CDFS(nmvc.comps[k].fp_cdf)
+#if CONFIG_NEW_MULTISYMBOL
+    AVERAGE_TILE_CDFS(nmvc.comps[k].hp_cdf)
+    AVERAGE_TILE_CDFS(nmvc.comps[k].class0_hp_cdf)
+#endif
   }
 #endif
 }

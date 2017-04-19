@@ -4925,11 +4925,13 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
     }
 #endif
 
+#if !CONFIG_NEW_MULTISYMBOL
     av1_write_nmv_probs(cm, cm->allow_high_precision_mv, header_bc,
 #if CONFIG_REF_MV
                         counts->mv);
 #else
                         &counts->mv);
+#endif
 #endif
 #if !CONFIG_EC_ADAPT
     update_ext_tx_probs(cm, header_bc);

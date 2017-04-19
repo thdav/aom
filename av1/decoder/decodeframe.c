@@ -286,6 +286,7 @@ static void read_frame_reference_mode_probs(AV1_COMMON *cm, aom_reader *r) {
   }
 }
 
+#if !CONFIG_NEW_MULTISYMBOL
 static void update_mv_probs(aom_prob *p, int n, aom_reader *r) {
   int i;
   for (i = 0; i < n; ++i) av1_diff_update_prob(r, &p[i], ACCT_STR);
@@ -322,6 +323,7 @@ static void read_mv_probs(nmv_context *ctx, int allow_hp, aom_reader *r) {
     }
   }
 }
+#endif
 
 static void inverse_transform_block(MACROBLOCKD *xd, int plane,
                                     const TX_TYPE tx_type,
@@ -4517,7 +4519,9 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
 #endif
   FRAME_CONTEXT *const fc = cm->fc;
   aom_reader r;
+#if !CONFIG_NEW_MULTISYMBOL
   int i;
+#endif
 #if !CONFIG_EC_ADAPT || \
     (CONFIG_MOTION_VAR || CONFIG_WARPED_MOTION || CONFIG_EXT_INTER)
   int j;
@@ -4681,11 +4685,13 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
     }
 #endif
 
+#if !CONFIG_NEW_MULTISYMBOL
 #if CONFIG_REF_MV
     for (i = 0; i < NMV_CONTEXTS; ++i)
       read_mv_probs(&fc->nmvc[i], cm->allow_high_precision_mv, &r);
 #else
     read_mv_probs(nmvc, cm->allow_high_precision_mv, &r);
+#endif
 #endif
 #if !CONFIG_EC_ADAPT
     read_ext_tx_probs(fc, &r);

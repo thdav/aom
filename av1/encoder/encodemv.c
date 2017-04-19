@@ -74,8 +74,13 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
 #endif
 
   // High precision bit
-  if (usehp)
+  if (usehp) {
+#if CONFIG_NEW_MULTISYMBOL
+    aom_write_symbol(w, hp, mv_class == MV_CLASS_0 ? mvcomp->class0_hp_cdf : mvcomp->hp_cdf, 2);
+#else
     aom_write(w, hp, mv_class == MV_CLASS_0 ? mvcomp->class0_hp : mvcomp->hp);
+#endif
+  }
 }
 
 static void build_nmv_component_cost_table(int *mvcost,
