@@ -19,7 +19,7 @@
 extern "C" {
 #endif
 
-extern const uint16_t av1_prob_cost[256];
+extern const uint16_t av1_prob_cost[257];
 
 // The factor to scale from cost in bits to cost in av1_prob_cost units.
 #define AV1_PROB_COST_SHIFT 9
@@ -55,6 +55,28 @@ static INLINE int treed_cost(aom_tree tree, const aom_prob *probs, int bits,
 
 void av1_cost_tokens(int *costs, const aom_prob *probs, aom_tree tree);
 void av1_cost_tokens_skip(int *costs, const aom_prob *probs, aom_tree tree);
+
+#if CONFIG_EC_MULTISYMBOL
+static INLINE int get_cdf_prob(const aom_cdf_prob *const cdf, const int i){
+  return AOM_ICDF(cdf[i]) - (i==0 ? 0 : AOM_ICDF(cdf[i-1]));
+}
+
+static INLINE int av1_cost_prob15(const aom_cdf_prob prob) {
+  const int prob8 = prob >> (CDF_PROB_BITS - 8);
+  int cost;
+  if (prob8 > 1) {
+    const int scale = 1<<(CDF_PROB_BITS - 8);
+    const int rem = prob - (prob8 << (CDF_PROB_BITS - 8));
+    cost = (av1_cost_zero(prob8) * (scale - rem) + av1_cost_zero(prob8) * rem ) >> (CDF_PROB_BITS - 8);
+  } else {
+    cost = av1_cost_zero(prob) + ((CDF_PROB_BITS - 8) << AV1_PROB_COST_SHIFT);
+  }
+  return cost;
+}
+static INLINE int av1_cost_cdf_val(const aom_cdf_prob *const cdf, const int i) {
+  return av1_cost_prob15(get_cdf_prob(cdf, i));
+}
+#endif
 
 #ifdef __cplusplus
 }  // extern "C"

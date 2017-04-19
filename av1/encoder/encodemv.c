@@ -81,7 +81,7 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
 static void build_nmv_component_cost_table(int *mvcost,
                                            const nmv_component *const mvcomp,
                                            int usehp) {
-  int i, v;
+  int i, j, v;
   int sign_cost[2], class_cost[MV_CLASSES], class0_cost[CLASS0_SIZE];
   int bits_cost[MV_OFFSET_BITS][2];
   int class0_fp_cost[CLASS0_SIZE][MV_FP_SIZE], fp_cost[MV_FP_SIZE];
@@ -89,16 +89,33 @@ static void build_nmv_component_cost_table(int *mvcost,
 
   sign_cost[0] = av1_cost_zero(mvcomp->sign);
   sign_cost[1] = av1_cost_one(mvcomp->sign);
+#if CONFIG_EC_MULTISYMBOL
+  for (i=0; i < MV_CLASSES; ++i) {
+    class_cost[i] = av1_cost_cdf_val(mvcomp->class_cdf, i);
+  }
+#else
   av1_cost_tokens(class_cost, mvcomp->classes, av1_mv_class_tree);
+#endif
   av1_cost_tokens(class0_cost, mvcomp->class0, av1_mv_class0_tree);
   for (i = 0; i < MV_OFFSET_BITS; ++i) {
     bits_cost[i][0] = av1_cost_zero(mvcomp->bits[i]);
     bits_cost[i][1] = av1_cost_one(mvcomp->bits[i]);
   }
 
+#if CONFIG_EC_MULTISYMBOL
+  for (i = 0; i < CLASS0_SIZE; ++i) {
+    for (j = 0; j < MV_FP_SIZE; ++j) {
+      class0_fp_cost[i][j] = av1_cost_cdf_val(mvcomp->class0_fp_cdf[i], j);
+    }
+  }
+  for (j = 0; j < MV_FP_SIZE; ++j) {
+    fp_cost[j] = av1_cost_cdf_val(mvcomp->fp_cdf, j);
+  }
+#else
   for (i = 0; i < CLASS0_SIZE; ++i)
     av1_cost_tokens(class0_fp_cost[i], mvcomp->class0_fp[i], av1_mv_fp_tree);
   av1_cost_tokens(fp_cost, mvcomp->fp, av1_mv_fp_tree);
+#endif
 
   if (usehp) {
     class0_hp_cost[0] = av1_cost_zero(mvcomp->class0_hp);
