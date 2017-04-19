@@ -76,9 +76,9 @@ static const nmv_context default_nmv_context = {
         128,                                                   // sign
         { 216, 128, 176, 160, 176, 176, 192, 198, 198, 208 },  // class
 #if CONFIG_EC_MULTISYMBOL
-        { AOM_ICDF(28672), AOM_ICDF(30976), AOM_ICDF(31858), AOM_ICDF(32320),
-          AOM_ICDF(32551), AOM_ICDF(32656), AOM_ICDF(32740), AOM_ICDF(32757),
-          AOM_ICDF(32762), AOM_ICDF(32767), AOM_ICDF(32768), 0 },  // class_cdf
+        { AOM_ICDF(27648), AOM_ICDF(30208), AOM_ICDF(31308), AOM_ICDF(31968),
+          AOM_ICDF(32346), AOM_ICDF(32518), AOM_ICDF(32705), AOM_ICDF(32743),
+          AOM_ICDF(32754), AOM_ICDF(32765), AOM_ICDF(32768), 0 },  // class_cdf
 #endif
         { 208 },                                               // class0
         { 136, 140, 148, 160, 176, 192, 224, 234, 234, 240 },  // bits
