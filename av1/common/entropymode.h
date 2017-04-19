@@ -216,6 +216,7 @@ typedef struct frame_contexts {
   aom_prob skip_probs[SKIP_CONTEXTS];
 #if CONFIG_NEW_MULTISYMBOL
   aom_cdf_prob skip_cdfs[SKIP_CONTEXTS][CDF_SIZE(2)];
+  aom_cdf_prob intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)];
 #endif
 
 #if CONFIG_REF_MV
