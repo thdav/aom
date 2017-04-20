@@ -1011,7 +1011,11 @@ static int read_mv_component(aom_reader *r, nmv_component *mvcomp, int usehp) {
 
   // Integer part
   if (class0) {
+#if CONFIG_NEW_MULTISYMBOL
+    d = aom_read_symbol(r, mvcomp->class0_cdf, CLASS0_SIZE, ACCT_STR);
+#else
     d = aom_read(r, mvcomp->class0[0], ACCT_STR);
+#endif
     mag = 0;
   } else {
     int i;

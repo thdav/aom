@@ -98,6 +98,7 @@ typedef struct {
   aom_prob class0_hp;
   aom_prob hp;
 #if CONFIG_NEW_MULTISYMBOL
+  aom_cdf_prob class0_cdf[CDF_SIZE(CLASS0_SIZE)];
   aom_cdf_prob class0_hp_cdf[CDF_SIZE(2)];
   aom_cdf_prob hp_cdf[CDF_SIZE(2)];
 #endif

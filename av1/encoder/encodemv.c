@@ -55,7 +55,11 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
 
   // Integer bits
   if (mv_class == MV_CLASS_0) {
+#if CONFIG_NEW_MULTISYMBOL
+    aom_write_symbol(w, d, mvcomp->class0_cdf, CLASS0_SIZE);
+#else
     aom_write(w, d, mvcomp->class0[0]);
+#endif
   } else {
     int i;
     const int n = mv_class + CLASS0_BITS - 1;  // number of bits
