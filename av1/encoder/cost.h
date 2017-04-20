@@ -57,7 +57,7 @@ void av1_cost_tokens(int *costs, const aom_prob *probs, aom_tree tree);
 void av1_cost_tokens_skip(int *costs, const aom_prob *probs, aom_tree tree);
 
 #if CONFIG_EC_MULTISYMBOL
-static INLINE int get_cdf_prob(const aom_cdf_prob *const cdf, const int i){
+static INLINE int av1_get_cdf_prob(const aom_cdf_prob *const cdf, const int i){
   return AOM_ICDF(cdf[i]) - (i==0 ? 0 : AOM_ICDF(cdf[i-1]));
 }
 
@@ -74,7 +74,7 @@ static INLINE int av1_cost_prob15(const aom_cdf_prob prob) {
   return cost;
 }
 static INLINE int av1_cost_cdf_val(const aom_cdf_prob *const cdf, const int i) {
-  return av1_cost_prob15(get_cdf_prob(cdf, i));
+  return av1_cost_prob15(av1_get_cdf_prob(cdf, i));
 }
 #endif
 
