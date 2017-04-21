@@ -217,7 +217,13 @@ typedef struct frame_contexts {
 #if CONFIG_NEW_MULTISYMBOL
   aom_cdf_prob skip_cdfs[SKIP_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob intra_inter_cdf[INTRA_INTER_CONTEXTS][CDF_SIZE(2)];
-#endif
+#if CONFIG_REF_MV
+  aom_cdf_prob newmv_cdf[NEWMV_MODE_CONTEXTS][CDF_SIZE(2)];
+  aom_cdf_prob zeromv_cdf[ZEROMV_MODE_CONTEXTS][CDF_SIZE(2)];
+  aom_cdf_prob refmv_cdf[REFMV_MODE_CONTEXTS][CDF_SIZE(2)];
+  aom_cdf_prob drl_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)];
+#endif  // CONFIG_REF_MV
+#endif // CONFIG_NEW_MULTISYMBOL
 
 #if CONFIG_REF_MV
   nmv_context nmvc[NMV_CONTEXTS];

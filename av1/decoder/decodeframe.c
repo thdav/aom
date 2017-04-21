@@ -181,6 +181,7 @@ static void read_switchable_interp_probs(FRAME_CONTEXT *fc, aom_reader *r) {
 }
 #endif
 
+#if !CONFIG_NEW_MULTISYMBOL
 static void read_inter_mode_probs(FRAME_CONTEXT *fc, aom_reader *r) {
 #if CONFIG_REF_MV
   int i;
@@ -205,6 +206,7 @@ static void read_inter_mode_probs(FRAME_CONTEXT *fc, aom_reader *r) {
 #endif
 #endif
 }
+#endif
 
 #if CONFIG_EXT_INTER
 static void read_inter_compound_mode_probs(FRAME_CONTEXT *fc, aom_reader *r) {
@@ -4630,7 +4632,9 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
 #if !CONFIG_REF_MV
     nmv_context *const nmvc = &fc->nmvc;
 #endif
+#if !CONFIG_NEW_MULTISYMBOL
     read_inter_mode_probs(fc, &r);
+#endif
 
 #if CONFIG_EXT_INTER
     read_inter_compound_mode_probs(fc, &r);

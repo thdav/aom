@@ -747,6 +747,39 @@ static const aom_prob default_refmv_prob[REFMV_MODE_CONTEXTS] = {
 
 static const aom_prob default_drl_prob[DRL_MODE_CONTEXTS] = { 128, 160, 180,
                                                               128, 160 };
+#if CONFIG_NEW_MULTISYMBOL
+static const aom_cdf_prob default_newmv_cdf[NEWMV_MODE_CONTEXTS][CDF_SIZE(2)] = {
+  { AOM_ICDF(128*200), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*180), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*150), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*150), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*110), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*70), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*60), AOM_ICDF(32768), 0}
+};
+static const aom_cdf_prob default_zeromv_cdf[ZEROMV_MODE_CONTEXTS][CDF_SIZE(2)] = {
+  { AOM_ICDF(128*192), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*64), AOM_ICDF(32768), 0}
+};
+static const aom_cdf_prob default_refmv_cdf[REFMV_MODE_CONTEXTS][CDF_SIZE(2)] = {
+  { AOM_ICDF(128*220), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*220), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*200), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*200), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*180), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*128), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*30), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*220), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*30), AOM_ICDF(32768), 0}
+};
+static const aom_cdf_prob default_drl_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)] = {
+  { AOM_ICDF(128*128), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*160), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*180), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*128), AOM_ICDF(32768), 0},
+  { AOM_ICDF(128*160), AOM_ICDF(32768), 0}
+};
+#endif
 #endif  // CONFIG_REF_MV
 
 static const aom_prob
@@ -3222,6 +3255,12 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
   av1_copy(fc->zeromv_prob, default_zeromv_prob);
   av1_copy(fc->refmv_prob, default_refmv_prob);
   av1_copy(fc->drl_prob, default_drl_prob);
+#if CONFIG_NEW_MULTISYMBOL
+  av1_copy(fc->newmv_cdf, default_newmv_cdf);
+  av1_copy(fc->zeromv_cdf, default_zeromv_cdf);
+  av1_copy(fc->refmv_cdf, default_refmv_cdf);
+  av1_copy(fc->drl_cdf, default_drl_cdf);
+#endif
 #endif  // CONFIG_REF_MV
   av1_copy(fc->inter_mode_probs, default_inter_mode_probs);
 #if CONFIG_MOTION_VAR || CONFIG_WARPED_MOTION

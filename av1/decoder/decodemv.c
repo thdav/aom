@@ -172,25 +172,37 @@ static PREDICTION_MODE read_inter_mode(FRAME_CONTEXT *ec_ctx, MACROBLOCKD *xd,
                                        aom_reader *r, int16_t ctx) {
 #if CONFIG_REF_MV
   FRAME_COUNTS *counts = xd->counts;
+  aom_prob mode_prob;
   int16_t mode_ctx = ctx & NEWMV_CTX_MASK;
-  aom_prob mode_prob = ec_ctx->newmv_prob[mode_ctx];
-
+#if CONFIG_NEW_MULTISYMBOL
+  if (!aom_read_symbol(r, ec_ctx->newmv_cdf[mode_ctx], 2, ACCT_STR)) {
+    return NEWMV;
+  }
+#else
+  mode_prob = ec_ctx->newmv_prob[mode_ctx];
   if (aom_read(r, mode_prob, ACCT_STR) == 0) {
     if (counts) ++counts->newmv_mode[mode_ctx][0];
     return NEWMV;
   }
   if (counts) ++counts->newmv_mode[mode_ctx][1];
+#endif
 
   if (ctx & (1 << ALL_ZERO_FLAG_OFFSET)) return ZEROMV;
 
   mode_ctx = (ctx >> ZEROMV_OFFSET) & ZEROMV_CTX_MASK;
 
+#if CONFIG_NEW_MULTISYMBOL
+  if (!aom_read_symbol(r, ec_ctx->zeromv_cdf[mode_ctx], 2, ACCT_STR)) {
+    return ZEROMV;
+  }
+#else
   mode_prob = ec_ctx->zeromv_prob[mode_ctx];
   if (aom_read(r, mode_prob, ACCT_STR) == 0) {
     if (counts) ++counts->zeromv_mode[mode_ctx][0];
     return ZEROMV;
   }
   if (counts) ++counts->zeromv_mode[mode_ctx][1];
+#endif
 
   mode_ctx = (ctx >> REFMV_OFFSET) & REFMV_CTX_MASK;
 
@@ -198,19 +210,15 @@ static PREDICTION_MODE read_inter_mode(FRAME_CONTEXT *ec_ctx, MACROBLOCKD *xd,
   if (ctx & (1 << SKIP_NEARMV_OFFSET)) mode_ctx = 7;
   if (ctx & (1 << SKIP_NEARESTMV_SUB8X8_OFFSET)) mode_ctx = 8;
 
+#if CONFIG_NEW_MULTISYMBOL
+  int near_or_nearest = aom_read_symbol(r, ec_ctx->refmv_cdf[mode_ctx], 2, ACCT_STR);
+#else
   mode_prob = ec_ctx->refmv_prob[mode_ctx];
+  int near_or_nearest = aom_read(r, mode_prob, ACCT_STR);
+  if (counts) ++counts->refmv_mode[mode_ctx][near_or_nearest];
+#endif
+  return near_or_nearest ? NEARMV : NEARESTMV;
 
-  if (aom_read(r, mode_prob, ACCT_STR) == 0) {
-    if (counts) ++counts->refmv_mode[mode_ctx][0];
-
-    return NEARESTMV;
-  } else {
-    if (counts) ++counts->refmv_mode[mode_ctx][1];
-    return NEARMV;
-  }
-
-  // Invalid prediction mode.
-  assert(0);
 #else
 #if CONFIG_EC_MULTISYMBOL
   const int mode = av1_inter_mode_inv[aom_read_symbol(
@@ -241,14 +249,19 @@ static void read_drl_idx(const AV1_COMMON *cm, MACROBLOCKD *xd,
     for (idx = 0; idx < 2; ++idx) {
       if (xd->ref_mv_count[ref_frame_type] > idx + 1) {
         uint8_t drl_ctx = av1_drl_ctx(xd->ref_mv_stack[ref_frame_type], idx);
+#if CONFIG_NEW_MULTISYMBOL
+        int drl_val = aom_read_symbol(r, xd->tile_ctx->drl_cdf[drl_ctx], 2, ACCT_STR);
+#else
         aom_prob drl_prob = cm->fc->drl_prob[drl_ctx];
-        if (!aom_read(r, drl_prob, ACCT_STR)) {
+        int drl_val = aom_read(r, drl_prob, ACCT_STR);
+#endif
+        if (!drl_val) {
           mbmi->ref_mv_idx = idx;
           if (xd->counts) ++xd->counts->drl_mode[drl_ctx][0];
           return;
         }
-        mbmi->ref_mv_idx = idx + 1;
         if (xd->counts) ++xd->counts->drl_mode[drl_ctx][1];
+        mbmi->ref_mv_idx = idx + 1;
       }
     }
   }
@@ -265,8 +278,13 @@ static void read_drl_idx(const AV1_COMMON *cm, MACROBLOCKD *xd,
     for (idx = 1; idx < 3; ++idx) {
       if (xd->ref_mv_count[ref_frame_type] > idx + 1) {
         uint8_t drl_ctx = av1_drl_ctx(xd->ref_mv_stack[ref_frame_type], idx);
+#if CONFIG_NEW_MULTISYMBOL
+        int drl_val = aom_read_symbol(r, xd->tile_ctx->drl_cdf[drl_ctx], 2, ACCT_STR);
+#else
         aom_prob drl_prob = cm->fc->drl_prob[drl_ctx];
-        if (!aom_read(r, drl_prob, ACCT_STR)) {
+        int drl_val = aom_read(r, drl_prob, ACCT_STR);
+#endif
+        if (!drl_val) {
           mbmi->ref_mv_idx = idx - 1;
           if (xd->counts) ++xd->counts->drl_mode[drl_ctx][0];
           return;
