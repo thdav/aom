@@ -222,6 +222,16 @@ typedef struct frame_contexts {
   aom_cdf_prob zeromv_cdf[ZEROMV_MODE_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob refmv_cdf[REFMV_MODE_CONTEXTS][CDF_SIZE(2)];
   aom_cdf_prob drl_cdf[DRL_MODE_CONTEXTS][CDF_SIZE(2)];
+
+  aom_cdf_prob comp_inter_cdf[COMP_INTER_CONTEXTS][CDF_SIZE(2)];
+  aom_cdf_prob single_ref_cdf[REF_CONTEXTS][SINGLE_REFS-1][CDF_SIZE(2)];
+#if CONFIG_EXT_REFS
+  aom_cdf_prob comp_ref_cdf[REF_CONTEXTS][FWD_REFS - 1][CDF_SIZE(2)];
+  aom_cdf_prob comp_bwdref_cdf[REF_CONTEXTS][BWD_REFS - 1][CDF_SIZE(2)];
+#else
+  aom_cdf_prob comp_ref_cdf[REF_CONTEXTS][COMP_REFS - 1][CDF_SIZE(2)];
+#endif  // CONFIG_EXT_REFS
+
 #endif  // CONFIG_REF_MV
 #endif // CONFIG_NEW_MULTISYMBOL
 

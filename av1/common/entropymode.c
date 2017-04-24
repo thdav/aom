@@ -1065,7 +1065,6 @@ static const aom_prob default_comp_ref_p[REF_CONTEXTS][COMP_REFS - 1] = {
   { 50 }, { 126 }, { 123 }, { 221 }, { 226 }
 };
 #endif  // CONFIG_EXT_REFS
-
 static const aom_prob default_single_ref_p[REF_CONTEXTS][SINGLE_REFS - 1] = {
 #if CONFIG_EXT_REFS
   { 33, 16, 16, 16, 16 },
@@ -1077,6 +1076,131 @@ static const aom_prob default_single_ref_p[REF_CONTEXTS][SINGLE_REFS - 1] = {
   { 33, 16 }, { 77, 74 }, { 142, 142 }, { 172, 170 }, { 238, 247 }
 #endif  // CONFIG_EXT_REFS
 };
+#if CONFIG_NEW_MULTISYMBOL
+static const aom_cdf_prob default_comp_inter_cdf[COMP_INTER_CONTEXTS][CDF_SIZE(2)] = {
+  {AOM_ICDF(239*128), AOM_ICDF(32768),0},
+  {AOM_ICDF(119*128), AOM_ICDF(32768),0},
+  {AOM_ICDF(96*128), AOM_ICDF(32768),0},
+  {AOM_ICDF(41*128), AOM_ICDF(32768),0}
+};
+
+#if CONFIG_EXT_REFS
+static const aom_cdf_prob default_comp_ref_cdf[REF_CONTEXTS][FWD_REFS - 1][CDF_SIZE(2)] = {
+  // TODO(zoeliu): To adjust the initial prob values.
+  {
+    {AOM_ICDF(33*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(16*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(16*128), AOM_ICDF(32768), 0}
+  },
+  {
+    {AOM_ICDF(77*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(74*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(74*128), AOM_ICDF(32768), 0}
+  },
+  {
+    {AOM_ICDF(142*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(142*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(142*128), AOM_ICDF(32768), 0}
+  },
+  {
+    {AOM_ICDF(172*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(170*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(170*128), AOM_ICDF(32768), 0}
+  },
+  {
+    {AOM_ICDF(238*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(247*128), AOM_ICDF(32768), 0},
+    {AOM_ICDF(247*128), AOM_ICDF(32768), 0}
+  }
+};
+static const aom_cdf_prob default_comp_bwdref_cdf[REF_CONTEXTS][BWD_REFS - 1][CDF_SIZE(2)] = {
+  {
+    {AOM_ICDF(16*128), AOM_ICDF(32768), 0}
+  },
+  {
+    {AOM_ICDF(74*128), AOM_ICDF(32768), 0}
+  },
+  {
+    {AOM_ICDF(142*128), AOM_ICDF(32768), 0}
+  },
+  {
+    {AOM_ICDF(170*128), AOM_ICDF(32768), 0}
+  },
+  {
+    {AOM_ICDF(247*128), AOM_ICDF(32768), 0}
+  },
+};
+#else
+static const aom_cdf_prob default_comp_ref_cdf[REF_CONTEXTS][COMP_REFS - 1][CDF_SIZE(2)] = {
+  { {AOM_ICDF(50*128), AOM_ICDF(32768), 0} },
+  { {AOM_ICDF(126*128), AOM_ICDF(32768), 0} },
+  { {AOM_ICDF(123*128), AOM_ICDF(32768), 0} },
+  { {AOM_ICDF(221*128), AOM_ICDF(32768), 0} },
+  { {AOM_ICDF(226*128), AOM_ICDF(32768), 0} }
+};
+#endif  // CONFIG_EXT_REFS
+static const aom_cdf_prob default_single_ref_cdf[REF_CONTEXTS][SINGLE_REFS - 1][CDF_SIZE(2)] = {
+#if CONFIG_EXT_REFS
+  {
+    { AOM_ICDF(33*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(16*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(16*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(16*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(16*128), AOM_ICDF(32768), 0}
+  },
+  {
+    { AOM_ICDF(77*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(74*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(74*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(74*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(74*128), AOM_ICDF(32768), 0}
+  },
+  {
+    { AOM_ICDF(142*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(142*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(142*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(142*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(142*128), AOM_ICDF(32768), 0}
+  },
+  {
+    { AOM_ICDF(172*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(170*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(170*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(170*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(170*128), AOM_ICDF(32768), 0}
+  },
+  {
+    { AOM_ICDF(238*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(247*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(247*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(247*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(247*128), AOM_ICDF(32768), 0}
+  }
+#else
+  {
+    { AOM_ICDF(33*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(16*128), AOM_ICDF(32768), 0}
+  },
+  {
+    { AOM_ICDF(77*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(74*128), AOM_ICDF(32768), 0}
+  },
+  {
+    { AOM_ICDF(142*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(142*128), AOM_ICDF(32768), 0}
+  },
+  {
+    { AOM_ICDF(172*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(170*128), AOM_ICDF(32768), 0}
+  },
+  {
+    { AOM_ICDF(238*128), AOM_ICDF(32768), 0},
+    { AOM_ICDF(247*128), AOM_ICDF(32768), 0}
+  }
+#endif  // CONFIG_EXT_REFS
+};
+#endif // CONFIG_NEW_MULTISYMBOL
+
 
 #if CONFIG_PALETTE
 
@@ -3260,6 +3384,13 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
   av1_copy(fc->zeromv_cdf, default_zeromv_cdf);
   av1_copy(fc->refmv_cdf, default_refmv_cdf);
   av1_copy(fc->drl_cdf, default_drl_cdf);
+
+  av1_copy(fc->comp_inter_cdf, default_comp_inter_cdf);
+  av1_copy(fc->comp_ref_cdf, default_comp_ref_cdf);
+  av1_copy(fc->single_ref_cdf, default_single_ref_cdf);
+#if CONFIG_EXT_REFS
+  av1_copy(fc->comp_bwdref_cdf, default_comp_bwdref_cdf);
+#endif  // CONFIG_EXT_REFS
 #endif
 #endif  // CONFIG_REF_MV
   av1_copy(fc->inter_mode_probs, default_inter_mode_probs);

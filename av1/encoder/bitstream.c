@@ -1208,7 +1208,7 @@ static void write_segment_id(aom_writer *w, const struct segmentation *seg,
 }
 
 // This function encodes the reference frame
-static void write_ref_frames(const AV1_COMMON *cm, const MACROBLOCKD *xd,
+static void write_ref_frames(const AV1_COMMON *cm, MACROBLOCKD *xd,
                              aom_writer *w) {
   const MB_MODE_INFO *const mbmi = &xd->mi[0]->mbmi;
   const int is_compound = has_second_ref(mbmi);
@@ -1243,6 +1243,20 @@ static void write_ref_frames(const AV1_COMMON *cm, const MACROBLOCKD *xd,
       const int bit = mbmi->ref_frame[0] == GOLDEN_FRAME;
 #endif  // CONFIG_EXT_REFS
 
+#if CONFIG_NEW_MULTISYMBOL
+      aom_write_symbol(w, bit, av1_get_pred_prob_comp_ref_cdf(cm, xd), 2);
+#if CONFIG_EXT_REFS
+      if (!bit) {
+        const int bit1 = mbmi->ref_frame[0] == LAST_FRAME;
+        aom_write_symbol(w, bit1, av1_get_pred_prob_comp_ref_cdf1(cm, xd), 2);
+      } else {
+        const int bit2 = mbmi->ref_frame[0] == GOLDEN_FRAME;
+        aom_write_symbol(w, bit2, av1_get_pred_prob_comp_ref_cdf2(cm, xd), 2);
+      }
+      aom_write_symbol(w, bit_bwd, av1_get_pred_prob_comp_bwdref_cdf(cm, xd), 2);
+#endif  // CONFIG_EXT_REFS
+
+#else
       aom_write(w, bit, av1_get_pred_prob_comp_ref_p(cm, xd));
 
 #if CONFIG_EXT_REFS
@@ -1255,7 +1269,41 @@ static void write_ref_frames(const AV1_COMMON *cm, const MACROBLOCKD *xd,
       }
       aom_write(w, bit_bwd, av1_get_pred_prob_comp_bwdref_p(cm, xd));
 #endif  // CONFIG_EXT_REFS
+#endif // CONFIG_NEW_MULTISYMBOL
     } else {
+#if CONFIG_NEW_MULTISYMBOL
+#if CONFIG_EXT_REFS
+      const int bit0 = (mbmi->ref_frame[0] == ALTREF_FRAME ||
+                        mbmi->ref_frame[0] == BWDREF_FRAME);
+      aom_write_symbol(w, bit0, av1_get_pred_prob_single_ref_cdf1(xd), 2);
+
+      if (bit0) {
+        const int bit1 = mbmi->ref_frame[0] == ALTREF_FRAME;
+        aom_write_symbol(w, bit1, av1_get_pred_prob_single_ref_cdf2(xd), 2);
+      } else {
+        const int bit2 = (mbmi->ref_frame[0] == LAST3_FRAME ||
+                          mbmi->ref_frame[0] == GOLDEN_FRAME);
+        aom_write_symbol(w, bit2, av1_get_pred_prob_single_ref_cdf3(xd), 2);
+
+        if (!bit2) {
+          const int bit3 = mbmi->ref_frame[0] != LAST_FRAME;
+          aom_write_symbol(w, bit3, av1_get_pred_prob_single_ref_cdf4(xd), 2);
+        } else {
+          const int bit4 = mbmi->ref_frame[0] != LAST3_FRAME;
+          aom_write_symbol(w, bit4, av1_get_pred_prob_single_ref_cdf5(xd), 2);
+        }
+      }
+#else   // CONFIG_EXT_REFS
+      const int bit0 = mbmi->ref_frame[0] != LAST_FRAME;
+      aom_write_symbol(w, bit0, av1_get_pred_prob_single_ref_cdf1(xd), 2);
+
+      if (bit0) {
+        const int bit1 = mbmi->ref_frame[0] != GOLDEN_FRAME;
+        aom_write_symbol(w, bit1, av1_get_pred_prob_single_ref_cdf2(xd), 2);
+      }
+#endif  // CONFIG_EXT_REFS
+
+#else
 #if CONFIG_EXT_REFS
       const int bit0 = (mbmi->ref_frame[0] == ALTREF_FRAME ||
                         mbmi->ref_frame[0] == BWDREF_FRAME);
@@ -1286,6 +1334,7 @@ static void write_ref_frames(const AV1_COMMON *cm, const MACROBLOCKD *xd,
         aom_write(w, bit1, av1_get_pred_prob_single_ref_p2(cm, xd));
       }
 #endif  // CONFIG_EXT_REFS
+#endif // CONFIG_NEW_MULTISYMBOL
     }
   }
 }
@@ -4733,19 +4782,24 @@ static void write_global_motion(AV1_COMP *cpi, aom_writer *w) {
 #endif
 
 static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
+
+  // NB we will always write 1 byte to avoid superframe collisions
+  // even if we encode nothing
   AV1_COMMON *const cm = &cpi->common;
 #if CONFIG_SUPERTX
   MACROBLOCKD *const xd = &cpi->td.mb.e_mbd;
 #endif  // CONFIG_SUPERTX
+  aom_writer *header_bc;
+#if !CONFIG_NEW_MULTISYMBOL
   FRAME_CONTEXT *const fc = cm->fc;
   FRAME_COUNTS *counts = cpi->td.counts;
-  aom_writer *header_bc;
   int i, j;
 
 #if CONFIG_TILE_GROUPS
   const int probwt = cm->num_tg;
 #else
   const int probwt = 1;
+#endif
 #endif
 
 #if CONFIG_ANS
@@ -4901,7 +4955,6 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
     for (i = 0; i < INTRA_INTER_CONTEXTS; i++)
       av1_cond_prob_diff_update(header_bc, &fc->intra_inter_prob[i],
                                 counts->intra_inter[i], probwt);
-#endif
 
     if (cpi->allow_comp_inter_inter) {
       const int use_hybrid_pred = cm->reference_mode == REFERENCE_MODE_SELECT;
@@ -4938,6 +4991,7 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
 #endif  // CONFIG_EXT_REFS
       }
     }
+#endif
 
 #if !CONFIG_EC_ADAPT
     for (i = 0; i < BLOCK_SIZE_GROUPS; ++i) {
