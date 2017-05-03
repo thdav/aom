@@ -21,6 +21,9 @@
 #include "av1/common/av1_fwd_txfm1d.h"
 #include "av1/common/av1_fwd_txfm2d_cfg.h"
 #include "av1/common/idct.h"
+#if CONFIG_AOM_QM
+#include "av1/encoder/av1_quantize.h"
+#endif
 
 static INLINE void range_check(const tran_low_t *input, const int size,
                                const int bit) {
@@ -1713,7 +1716,7 @@ void av1_fdct8x8_quant_c(const int16_t *input, int stride,
                          const int16_t *iscan
 #if CONFIG_AOM_QM
                          ,
-                         const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr
+                         QUANT_PARAM qparam
 #endif
                          ) {
   int eob = -1;
@@ -1801,8 +1804,8 @@ void av1_fdct8x8_quant_c(const int16_t *input, int stride,
       const int rc = scan[i];
       const int coeff = coeff_ptr[rc];
 #if CONFIG_AOM_QM
-      const qm_val_t wt = qm_ptr[rc];
-      const qm_val_t iwt = iqm_ptr[rc];
+      const qm_val_t wt = qparam.qmatrix[rc];
+      const qm_val_t iwt = qparam.iqmatrix[rc];
       const int dequant =
           (dequant_ptr[rc != 0] * iwt + (1 << (AOM_QM_BITS - 1))) >>
           AOM_QM_BITS;
