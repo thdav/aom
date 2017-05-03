@@ -444,10 +444,13 @@ static void quantize_fp_helper_c(
     const int16_t *quant_shift_ptr, tran_low_t *qcoeff_ptr,
     tran_low_t *dqcoeff_ptr, const int16_t *dequant_ptr, uint16_t *eob_ptr,
     const int16_t *scan, const int16_t *iscan,
+    const QUANT_PARAM * qparam) {
 #if CONFIG_AOM_QM
-    const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr,
+  const qm_ptr = qparam->qmatrix;
+  const iqm_ptr = qparam->iqmatrix;
 #endif
-    int log_scale) {
+  const int log_scale = qparam->log_scale;
+
   int i, eob = -1;
   // TODO(jingning) Decide the need of these arguments after the
   // quantization process is completed.
@@ -513,13 +516,15 @@ void av1_quantize_fp_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                        const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr
 #endif
                        ) {
+  QUANT_PARAM qparam;
+#if CONFIG_AOM_QM
+  qparam.qmatrix = qm_ptr;
+  qparam.iqmatrix = iqm_ptr;
+#endif
+  qparam.log_scale = 0;
   quantize_fp_helper_c(coeff_ptr, n_coeffs, skip_block, zbin_ptr, round_ptr,
                        quant_ptr, quant_shift_ptr, qcoeff_ptr, dqcoeff_ptr,
-                       dequant_ptr, eob_ptr, scan, iscan,
-#if CONFIG_AOM_QM
-                       qm_ptr, iqm_ptr,
-#endif
-                       0);
+                       dequant_ptr, eob_ptr, scan, iscan, &qparam);
 }
 
 void av1_quantize_fp_32x32_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
@@ -534,13 +539,15 @@ void av1_quantize_fp_32x32_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                              const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr
 #endif
                              ) {
+  QUANT_PARAM qparam;
+#if CONFIG_AOM_QM
+  qparam.qmatrix = qm_ptr;
+  qparam.iqmatrix = iqm_ptr;
+#endif
+  qparam.log_scale = 1;
   quantize_fp_helper_c(coeff_ptr, n_coeffs, skip_block, zbin_ptr, round_ptr,
                        quant_ptr, quant_shift_ptr, qcoeff_ptr, dqcoeff_ptr,
-                       dequant_ptr, eob_ptr, scan, iscan,
-#if CONFIG_AOM_QM
-                       qm_ptr, iqm_ptr,
-#endif
-                       1);
+                       dequant_ptr, eob_ptr, scan, iscan, &qparam);
 }
 
 #if CONFIG_TX64X64
@@ -556,13 +563,15 @@ void av1_quantize_fp_64x64_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                              const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr
 #endif
                              ) {
+  QUANT_PARAM qparam;
+#if CONFIG_AOM_QM
+  qparam.qmatrix = qm_ptr;
+  qparam.iqmatrix = iqm_ptr;
+#endif
+  qparam.log_scale = 2;
   quantize_fp_helper_c(coeff_ptr, n_coeffs, skip_block, zbin_ptr, round_ptr,
                        quant_ptr, quant_shift_ptr, qcoeff_ptr, dqcoeff_ptr,
-                       dequant_ptr, eob_ptr, scan, iscan,
-#if CONFIG_AOM_QM
-                       qm_ptr, iqm_ptr,
-#endif
-                       2);
+                       dequant_ptr, eob_ptr, scan, iscan, &qparam);
 }
 #endif  // CONFIG_TX64X64
 
@@ -587,10 +596,7 @@ void av1_quantize_fp_facade(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                              p->round_fp, p->quant_fp, p->quant_shift,
                              qcoeff_ptr, dqcoeff_ptr, pd->dequant, eob_ptr,
                              sc->scan, sc->iscan,
-#if CONFIG_AOM_QM
-                             qm_ptr, iqm_ptr,
-#endif
-                             qparam->log_scale);
+                             qparam);
       } else {
         av1_quantize_fp(coeff_ptr, n_coeffs, skip_block, p->zbin, p->round_fp,
                         p->quant_fp, p->quant_shift, qcoeff_ptr, dqcoeff_ptr,
