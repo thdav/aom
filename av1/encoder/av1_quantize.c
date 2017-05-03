@@ -884,10 +884,6 @@ void av1_highbd_quantize_b_facade(const tran_low_t *coeff_ptr,
                                   const QUANT_PARAM *qparam) {
   // obsolete skip_block
   const int skip_block = 0;
-#if CONFIG_AOM_QM
-  const qm_val_t *qm_ptr = qparam->qmatrix;
-  const qm_val_t *iqm_ptr = qparam->iqmatrix;
-#endif  // CONFIG_AOM_QM
 
   switch (qparam->log_scale) {
     case 0:
@@ -896,7 +892,7 @@ void av1_highbd_quantize_b_facade(const tran_low_t *coeff_ptr,
                             pd->dequant, eob_ptr, sc->scan, sc->iscan
 #if CONFIG_AOM_QM
                             ,
-                            qm_ptr, iqm_ptr
+                            qparam
 #endif
                             );
       break;
@@ -907,7 +903,7 @@ void av1_highbd_quantize_b_facade(const tran_low_t *coeff_ptr,
                                   sc->scan, sc->iscan
 #if CONFIG_AOM_QM
                                   ,
-                                  qm_ptr, iqm_ptr
+                                  qparam
 #endif
                                   );
       break;
@@ -919,7 +915,7 @@ void av1_highbd_quantize_b_facade(const tran_low_t *coeff_ptr,
                                   sc->scan, sc->iscan
 #if CONFIG_AOM_QM
                                   ,
-                                  qm_ptr, iqm_ptr
+                                  qparam
 #endif
                                   );
       break;

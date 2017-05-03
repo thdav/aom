@@ -367,7 +367,7 @@ void aom_highbd_quantize_b_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                              tran_low_t *qcoeff_ptr, tran_low_t *dqcoeff_ptr,
                              const int16_t *dequant_ptr, uint16_t *eob_ptr,
                              const int16_t *scan, const int16_t *iscan,
-                             const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr) {
+                             const QUANT_PARAM * qparam) {
   int i, non_zero_count = (int)n_coeffs, eob = -1;
   const int zbins[2] = { zbin_ptr[0], zbin_ptr[1] };
   const int nzbins[2] = { zbins[0] * -1, zbins[1] * -1 };
@@ -378,6 +378,8 @@ void aom_highbd_quantize_b_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
   memset(dqcoeff_ptr, 0, n_coeffs * sizeof(*dqcoeff_ptr));
 
   if (!skip_block) {
+    const qm_val_t *qm_ptr = qparam->qmatrix;
+    const qm_val_t *iqm_ptr = qparam->iqmatrix;
     // Pre-scan pass
     for (i = (int)n_coeffs - 1; i >= 0; i--) {
       const int rc = scan[i];
