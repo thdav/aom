@@ -21,9 +21,17 @@ static void quantize_b_helper_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                                 const int16_t *dequant_ptr, uint16_t *eob_ptr,
                                 const int16_t *scan, const int16_t *iscan,
 #if CONFIG_AOM_QM
-                                const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr,
+                                const QUANT_PARAM *qparam
+#else
+                                const int log_scale
 #endif
-                                const int log_scale) {
+    ){
+#if CONFIG_AOM_QM
+  const qm_val_t * qm_ptr = qparam->qmatrix;
+  const qm_val_t * iqm_ptr = qparam->iqmatrix;
+  const int log_scale = qparam->log_scale;
+#endif
+
   const int zbins[2] = { ROUND_POWER_OF_TWO(zbin_ptr[0], log_scale),
                          ROUND_POWER_OF_TWO(zbin_ptr[1], log_scale) };
   const int nzbins[2] = { zbins[0] * -1, zbins[1] * -1 };
@@ -110,16 +118,18 @@ void aom_quantize_b_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                       const int16_t *iscan
 #if CONFIG_AOM_QM
                       ,
-                      const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr
+                      const QUANT_PARAM *qparam
 #endif
                       ) {
   quantize_b_helper_c(coeff_ptr, n_coeffs, skip_block, zbin_ptr, round_ptr,
                       quant_ptr, quant_shift_ptr, qcoeff_ptr, dqcoeff_ptr,
                       dequant_ptr, eob_ptr, scan, iscan,
 #if CONFIG_AOM_QM
-                      qm_ptr, iqm_ptr,
+                      qparam
+#else
+                      0
 #endif
-                      0);
+                      );
 }
 
 void aom_quantize_b_32x32_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
@@ -131,16 +141,18 @@ void aom_quantize_b_32x32_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                             const int16_t *scan, const int16_t *iscan
 #if CONFIG_AOM_QM
                             ,
-                            const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr
+                            const QUANT_PARAM *qparam
 #endif
                             ) {
   quantize_b_helper_c(coeff_ptr, n_coeffs, skip_block, zbin_ptr, round_ptr,
                       quant_ptr, quant_shift_ptr, qcoeff_ptr, dqcoeff_ptr,
                       dequant_ptr, eob_ptr, scan, iscan,
 #if CONFIG_AOM_QM
-                      qm_ptr, iqm_ptr,
+                      qparam
+#else
+                      1
 #endif
-                      1);
+                      );
 }
 
 #if CONFIG_TX64X64
@@ -153,16 +165,18 @@ void aom_quantize_b_64x64_c(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                             const int16_t *scan, const int16_t *iscan
 #if CONFIG_AOM_QM
                             ,
-                            const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr
+                            const QUANT_PARAM *qparam
 #endif
                             ) {
   quantize_b_helper_c(coeff_ptr, n_coeffs, skip_block, zbin_ptr, round_ptr,
                       quant_ptr, quant_shift_ptr, qcoeff_ptr, dqcoeff_ptr,
                       dequant_ptr, eob_ptr, scan, iscan,
 #if CONFIG_AOM_QM
-                      qm_ptr, iqm_ptr,
+                      qparam
+#else
+                      2
 #endif
-                      2);
+                      );
 }
 #endif  // CONFIG_TX64X64
 

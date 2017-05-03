@@ -633,10 +633,6 @@ void av1_quantize_b_facade(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                            const QUANT_PARAM *qparam) {
   // obsolete skip_block
   const int skip_block = 0;
-#if CONFIG_AOM_QM
-  const qm_val_t *qm_ptr = qparam->qmatrix;
-  const qm_val_t *iqm_ptr = qparam->iqmatrix;
-#endif  // CONFIG_AOM_QM
 
   switch (qparam->log_scale) {
     case 0:
@@ -645,7 +641,7 @@ void av1_quantize_b_facade(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                      pd->dequant, eob_ptr, sc->scan, sc->iscan
 #if CONFIG_AOM_QM
                      ,
-                     qm_ptr, iqm_ptr
+                     qparam
 #endif
                      );
       break;
@@ -655,7 +651,7 @@ void av1_quantize_b_facade(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                            pd->dequant, eob_ptr, sc->scan, sc->iscan
 #if CONFIG_AOM_QM
                            ,
-                           qm_ptr, iqm_ptr
+                           qparam
 #endif
                            );
       break;
@@ -666,7 +662,7 @@ void av1_quantize_b_facade(const tran_low_t *coeff_ptr, intptr_t n_coeffs,
                            pd->dequant, eob_ptr, sc->scan, sc->iscan
 #if CONFIG_AOM_QM
                            ,
-                           qm_ptr, iqm_ptr
+                           qparam
 #endif
                            );
       break;
@@ -851,10 +847,6 @@ void av1_highbd_quantize_fp_facade(const tran_low_t *coeff_ptr,
                                    const QUANT_PARAM *qparam) {
   // obsolete skip_block
   const int skip_block = 0;
-#if CONFIG_AOM_QM
-  const qm_val_t *qm_ptr = qparam->qmatrix;
-  const qm_val_t *iqm_ptr = qparam->iqmatrix;
-#endif  // CONFIG_AOM_QM
 
   if (n_coeffs < 16) {
     // TODO(jingning): Need SIMD implementation for smaller block size
@@ -864,9 +856,11 @@ void av1_highbd_quantize_fp_facade(const tran_low_t *coeff_ptr,
                              qcoeff_ptr, dqcoeff_ptr, pd->dequant, eob_ptr,
                              sc->scan, sc->iscan,
 #if CONFIG_AOM_QM
-                             qm_ptr, iqm_ptr,
+                             qparam
+#else
+                             qparam->log_scale
 #endif
-                             qparam->log_scale);
+                             );
     return;
   }
 
@@ -874,9 +868,11 @@ void av1_highbd_quantize_fp_facade(const tran_low_t *coeff_ptr,
                          p->quant_fp, p->quant_shift, qcoeff_ptr, dqcoeff_ptr,
                          pd->dequant, eob_ptr, sc->scan, sc->iscan,
 #if CONFIG_AOM_QM
-                         qm_ptr, iqm_ptr,
+                         qparam
+#else
+                         qparam->log_scale
 #endif
-                         qparam->log_scale);
+                         );
 }
 
 void av1_highbd_quantize_b_facade(const tran_low_t *coeff_ptr,
@@ -1512,9 +1508,17 @@ void av1_highbd_quantize_fp_c(const tran_low_t *coeff_ptr, intptr_t count,
                               const int16_t *dequant_ptr, uint16_t *eob_ptr,
                               const int16_t *scan, const int16_t *iscan,
 #if CONFIG_AOM_QM
-                              const qm_val_t *qm_ptr, const qm_val_t *iqm_ptr,
+                              const QUANT_PARAM *qparam
+#else
+                              int log_scale
 #endif
-                              int log_scale) {
+                              ) {
+#if CONFIG_AOM_QM
+
+  const qm_val_t *qm_ptr = qparam->qmatrix;
+  const qm_val_t *iqm_ptr = qparam->iqmatrix;
+  const int log_scale = qparam->log_scale;
+#endif
   int i;
   int eob = -1;
   const int scale = 1 << log_scale;

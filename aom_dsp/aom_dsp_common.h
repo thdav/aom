@@ -61,8 +61,21 @@ extern "C" {
 
 #if CONFIG_AOM_QM
 typedef uint16_t qm_val_t;
-#define AOM_QM_BITS 6
 #endif
+
+#define AOM_QM_BITS 6
+typedef struct QUANT_PARAM {
+  int log_scale;
+#if CONFIG_NEW_QUANT
+  TX_SIZE tx_size;
+  int dq;
+#endif  // CONFIG_NEW_QUANT
+#if CONFIG_AOM_QM
+  const qm_val_t *qmatrix;
+  const qm_val_t *iqmatrix;
+#endif  // CONFIG_AOM_QM
+} QUANT_PARAM;
+
 #if CONFIG_HIGHBITDEPTH
 // Note:
 // tran_low_t  is the datatype used for final transform coefficients.
