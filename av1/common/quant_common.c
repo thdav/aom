@@ -363,12 +363,23 @@ void aom_qm_init(AV1_COMMON *cm) {
     for (c = 0; c < 2; ++c) {
       for (f = 0; f < 2; ++f) {
         current = 0;
-        for (t = 0; t < TX_SIZES; ++t) {
-          size = 1 << (t + 2);
+#if CONFIG_CB4X4
+        cm->gqmatrix[q][c][f][TX_2X2] = &wt_matrix_ref[NUM_QM_LEVELS - 1][c][f][0];
+        cm->giqmatrix[q][c][f][TX_2X2] = &iwt_matrix_ref[NUM_QM_LEVELS - 1][c][f][0];
+        for (t = 1; t < TX_SIZES; ++t) {
+          size = tx_size_2d[t];
           cm->gqmatrix[q][c][f][t] = &wt_matrix_ref[q][c][f][current];
           cm->giqmatrix[q][c][f][t] = &iwt_matrix_ref[q][c][f][current];
-          current += size * size;
+          current += size;
         }
+#else
+        for (t = 0; t < TX_SIZES; ++t) {
+          size = tx_size_2d[t];
+          cm->gqmatrix[q][c][f][t] = &wt_matrix_ref[q][c][f][current];
+          cm->giqmatrix[q][c][f][t] = &iwt_matrix_ref[q][c][f][current];
+          current += size;
+        }
+#endif
       }
     }
   }
