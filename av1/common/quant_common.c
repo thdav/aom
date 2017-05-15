@@ -343,12 +343,12 @@ int av1_get_qindex(const struct segmentation *seg, int segment_id,
 
 #if CONFIG_AOM_QM
 qm_val_t *aom_iqmatrix(AV1_COMMON *cm, int qmlevel, int is_chroma,
-                       int log2sizem2, int is_intra) {
-  return &cm->giqmatrix[qmlevel][!!is_chroma][!!is_intra][log2sizem2][0];
+                       TX_SIZE tx_size, int is_intra) {
+  return &cm->giqmatrix[qmlevel][!!is_chroma][!!is_intra][tx_size][0];
 }
 qm_val_t *aom_qmatrix(AV1_COMMON *cm, int qmlevel, int is_chroma,
-                      int log2sizem2, int is_intra) {
-  return &cm->gqmatrix[qmlevel][!!is_chroma][!!is_intra][log2sizem2][0];
+                      TX_SIZE tx_size, int is_intra) {
+  return &cm->gqmatrix[qmlevel][!!is_chroma][!!is_intra][tx_size][0];
 }
 
 static uint16_t iwt_matrix_ref[NUM_QM_LEVELS][2][2]
@@ -381,7 +381,7 @@ void aom_qm_init(AV1_COMMON *cm) {
         }
 #endif
         // Point all other matrices at the 32x16 matrix
-        for (t = TX_4X8; t < TX_SIZES_ALL; ++t) {
+        for (t = TX_SIZES; t < TX_SIZES_ALL; ++t) {
           cm->gqmatrix[q][c][f][t] = &wt_matrix_ref[q][c][f][current];
           cm->giqmatrix[q][c][f][t] = &iwt_matrix_ref[q][c][f][current];
         }

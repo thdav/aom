@@ -54,9 +54,9 @@ static INLINE int aom_get_qmlevel(int qindex, int first, int last) {
 }
 void aom_qm_init(struct AV1Common *cm);
 qm_val_t *aom_iqmatrix(struct AV1Common *cm, int qindex, int comp,
-                       int log2sizem2, int is_intra);
+                       TX_SIZE tx_size, int is_intra);
 qm_val_t *aom_qmatrix(struct AV1Common *cm, int qindex, int comp,
-                      int log2sizem2, int is_intra);
+                      TX_SIZE tx_size, int is_intra);
 #endif
 
 #if CONFIG_NEW_QUANT
