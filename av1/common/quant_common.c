@@ -368,8 +368,8 @@ void aom_qm_init(AV1_COMMON *cm) {
         current = 0;
         for (t = 0; t < TX_SIZES_ALL; ++t) {
           size = tx_size_2d[t];
-          cm->gqmatrix[q][c][f][t] = &wt_matrix_ref[q][c][0][current];
-          cm->giqmatrix[q][c][f][t] = &iwt_matrix_ref[q][c][0][current];
+          cm->gqmatrix[q][c][f][t] = &wt_matrix_ref[f==0 ? q+5 : q][c][0][current];
+          cm->giqmatrix[q][c][f][t] = &iwt_matrix_ref[f==0 ? q+5 : q][c][0][current];
           current += size;
         }
       }
