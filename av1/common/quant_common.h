@@ -29,11 +29,10 @@ extern "C" {
 // Total number of QM sets stored
 #define QM_LEVEL_BITS 4
 #define NUM_QM_LEVELS (1 << QM_LEVEL_BITS)
-/* Offset into the list of QMs. Actual number of levels used is
-   (NUM_QM_LEVELS-AOM_QM_OFFSET)
-   Lower value of AOM_QM_OFFSET implies more heavily weighted matrices.*/
-#define DEFAULT_QM_FIRST (NUM_QM_LEVELS / 2)
-#define DEFAULT_QM_LAST (NUM_QM_LEVELS - 1)
+/* Range of QMS is between first and last value, with offset applied to inter blocks*/
+#define DEFAULT_QM_FIRST 5
+#define DEFAULT_QM_LAST 9
+#define DEFAULT_QM_INTER_OFFSET 4
 #endif
 
 struct AV1Common;
