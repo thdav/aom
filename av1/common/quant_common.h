@@ -32,7 +32,7 @@ extern "C" {
 /* Range of QMS is between first and last value, with offset applied to inter blocks*/
 #define DEFAULT_QM_FIRST 5
 #define DEFAULT_QM_LAST 9
-#define DEFAULT_QM_INTER_OFFSET 4
+#define DEFAULT_QM_INTER_OFFSET 0
 #endif
 
 struct AV1Common;
