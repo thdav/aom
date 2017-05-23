@@ -63,7 +63,7 @@ extern "C" {
 typedef uint16_t qm_val_t;
 #endif
 
-#define AOM_QM_BITS 5
+#define AOM_QM_BITS 4
 typedef struct QUANT_PARAM {
   int log_scale;
 #if CONFIG_NEW_QUANT
