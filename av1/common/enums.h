@@ -228,6 +228,8 @@ typedef enum {
   TX_TYPES,
 } TX_TYPE;
 
+#define IS_2D_TRANSFORM(tx_type) (tx_type < IDTX)
+
 typedef enum {
   TILE_LEFT_BOUNDARY = 1,
   TILE_RIGHT_BOUNDARY = 2,
