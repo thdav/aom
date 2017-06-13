@@ -169,6 +169,9 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
       IS_2D_TRANSFORM(tx_type)
           ? pd->seg_iqmatrix[seg_id][!ref][tx_size]
           : cm->giqmatrix[NUM_QM_LEVELS - 1][0][0][tx_size];
+  const qm_val_t *qmatrix =
+      IS_2D_TRANSFORM(tx_type) ? pd->seg_qmatrix[seg_id][!ref][tx_size]
+                               : cm->gqmatrix[NUM_QM_LEVELS - 1][0][0][tx_size];
 #endif
 #if CONFIG_NEW_QUANT
   int dq = get_dq_profile_from_ctx(mb->qindex, ctx, ref, plane_type);
@@ -188,8 +191,13 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
 
   assert((!plane_type && !plane) || (plane_type && plane));
   assert(eob <= default_eob);
-
+#if AOM_QM
+  int64_t rdmult = (mb->rdmult * (plane_rd_mult[ref][plane_type] -
+                                  IS_2D_TRANSFORM(tx_type))) >>
+                   1;
+#else
   int64_t rdmult = (mb->rdmult * plane_rd_mult[ref][plane_type]) >> 1;
+#endif
 
   int64_t rate0, rate1;
   for (i = 0; i < eob; i++) {
@@ -256,20 +264,24 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
         dx0 >>= xd->bd - 8;
       }
 #endif
-      int64_t d0 = (int64_t)dx0 * dx0;
-
-      int x_a = x - 2 * sz - 1;
-      int64_t d2, d2_a;
-
-      int dx;
-
 #if CONFIG_AOM_QM
       int iwt = iqmatrix[rc];
+      int wt = qmatrix[rc];
       dqv = dequant_ptr[rc != 0];
       dqv = ((iwt * (int)dqv) + (1 << (AOM_QM_BITS - 1))) >> AOM_QM_BITS;
 #else
       dqv = dequant_ptr[rc != 0];
 #endif
+#if CONFIG_AOM_QM
+      int64_t d0 = ((int64_t)dx0 * dx0 * wt * wt) >> (2 * AOM_QM_BITS);
+#else
+      int64_t d0 = (int64_t)dx0 * dx0;
+#endif
+
+      int x_a = x - 2 * sz - 1;
+      int64_t d2, d2_a;
+
+      int dx;
 
       dx = (dqcoeff[rc] - coeff[rc]) * (1 << shift);
 #if CONFIG_HIGHBITDEPTH
@@ -279,7 +291,11 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
         if (dx_sign) dx = -dx;
       }
 #endif  // CONFIG_HIGHBITDEPTH
+#if CONFIG_AOM_QM
+      d2 = ((int64_t)dx * dx * wt * wt) >> (2 * AOM_QM_BITS);
+#else
       d2 = (int64_t)dx * dx;
+#endif
 
       /* compute the distortion for the second candidate
        * x_a = x - 2 * sz + 1;
@@ -304,7 +320,11 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
         dx -= (dqv + sz) ^ sz;
 #endif  // CONFIG_HIGHBITDEPTH
 #endif  // CONFIG_NEW_QUANT
+#if CONFIG_AOM_QM
+        d2_a = ((int64_t)dx * dx * wt * wt) >> (2 * AOM_QM_BITS);
+#else
         d2_a = (int64_t)dx * dx;
+#endif
       } else {
         d2_a = d0;
       }
