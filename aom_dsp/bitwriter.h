@@ -141,7 +141,8 @@ static INLINE void aom_write_symbol(aom_writer *w, int symb, aom_cdf_prob *cdf,
                                     int nsymbs) {
   aom_write_cdf(w, symb, cdf, nsymbs);
 #if CONFIG_EC_ADAPT
-  update_cdf(cdf, symb, nsymbs);
+  if (nsymbs > 2)
+    update_cdf(cdf, symb, nsymbs);
 #endif
 }
 
