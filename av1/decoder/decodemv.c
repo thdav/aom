@@ -182,9 +182,16 @@ static int read_cfl_alphas(FRAME_CONTEXT *const ec_ctx, aom_reader *r,
 #if CONFIG_EXT_INTER && CONFIG_INTERINTRA
 static INTERINTRA_MODE read_interintra_mode(AV1_COMMON *cm, MACROBLOCKD *xd,
                                             aom_reader *r, int size_group) {
+#if CONFIG_EC_ADAPT
+  (void)cm;
+  const INTERINTRA_MODE ii_mode = (INTERINTRA_MODE)aom_read_symbol(
+      r, xd->tile_ctx->interintra_mode_cdf[size_group], INTERINTRA_MODES,
+      ACCT_STR);
+#else
   const INTERINTRA_MODE ii_mode = (INTERINTRA_MODE)aom_read_tree(
       r, av1_interintra_mode_tree, cm->fc->interintra_mode_prob[size_group],
       ACCT_STR);
+#endif
   FRAME_COUNTS *counts = xd->counts;
   if (counts) ++counts->interintra_mode[size_group][ii_mode];
   return ii_mode;
@@ -2530,8 +2537,13 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
 #endif
       cm->allow_interintra_compound && is_interintra_allowed(mbmi)) {
     const int bsize_group = size_group_lookup[bsize];
+#if CONFIG_NEW_MULTISYMBOL
+    const int interintra =
+        aom_read_symbol(r, ec_ctx->interintra_cdf[bsize_group], 2, ACCT_STR);
+#else
     const int interintra =
         aom_read(r, cm->fc->interintra_prob[bsize_group], ACCT_STR);
+#endif
     if (xd->counts) xd->counts->interintra[bsize_group][interintra]++;
     assert(mbmi->ref_frame[1] == NONE_FRAME);
     if (interintra) {
@@ -2551,8 +2563,13 @@ static void read_inter_block_mode_info(AV1Decoder *const pbi,
       mbmi->filter_intra_mode_info.use_filter_intra_mode[1] = 0;
 #endif  // CONFIG_FILTER_INTRA
       if (is_interintra_wedge_used(bsize)) {
+#if CONFIG_NEW_MULTISYMBOL
+        mbmi->use_wedge_interintra = aom_read_symbol(
+            r, ec_ctx->wedge_interintra_cdf[bsize], 2, ACCT_STR);
+#else
         mbmi->use_wedge_interintra =
             aom_read(r, cm->fc->wedge_interintra_prob[bsize], ACCT_STR);
+#endif
         if (xd->counts)
           xd->counts->wedge_interintra[bsize][mbmi->use_wedge_interintra]++;
         if (mbmi->use_wedge_interintra) {

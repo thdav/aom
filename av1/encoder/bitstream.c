@@ -219,14 +219,6 @@ static void write_intra_mode_kf(const AV1_COMMON *cm, FRAME_CONTEXT *frame_ctx,
   (void)cm;
 }
 
-#if CONFIG_EXT_INTER && CONFIG_INTERINTRA
-static void write_interintra_mode(aom_writer *w, INTERINTRA_MODE mode,
-                                  const aom_prob *probs) {
-  av1_write_token(w, av1_interintra_mode_tree, probs,
-                  &interintra_mode_encodings[mode]);
-}
-#endif  // CONFIG_EXT_INTER && CONFIG_INTERINTRA
-
 static void write_inter_mode(aom_writer *w, PREDICTION_MODE mode,
                              FRAME_CONTEXT *ec_ctx, const int16_t mode_ctx) {
   const int16_t newmv_ctx = mode_ctx & NEWMV_CTX_MASK;
@@ -2222,13 +2214,29 @@ static void pack_inter_mode_mvs(AV1_COMP *cpi, const int mi_row,
         cpi->common.allow_interintra_compound && is_interintra_allowed(mbmi)) {
       const int interintra = mbmi->ref_frame[1] == INTRA_FRAME;
       const int bsize_group = size_group_lookup[bsize];
+#if CONFIG_NEW_MULTISYMBOL
+      aom_write_symbol(w, interintra, ec_ctx->interintra_cdf[bsize_group], 2);
+#else
       aom_write(w, interintra, cm->fc->interintra_prob[bsize_group]);
+#endif
       if (interintra) {
-        write_interintra_mode(w, mbmi->interintra_mode,
-                              cm->fc->interintra_mode_prob[bsize_group]);
+#if CONFIG_EC_ADAPT
+        aom_write_symbol(w, mbmi->interintra_mode,
+                         ec_ctx->interintra_mode_cdf[bsize_group],
+                         INTERINTRA_MODES);
+#else
+        av1_write_token(w, av1_interintra_mode_tree,
+                        cm->fc->interintra_mode_prob[bsize_group],
+                        &interintra_mode_encodings[mbmi->interintra_mode]);
+#endif
         if (is_interintra_wedge_used(bsize)) {
+#if CONFIG_NEW_MULTISYMBOL
+          aom_write_symbol(w, mbmi->use_wedge_interintra,
+                           ec_ctx->wedge_interintra_cdf[bsize], 2);
+#else
           aom_write(w, mbmi->use_wedge_interintra,
                     cm->fc->wedge_interintra_prob[bsize]);
+#endif
           if (mbmi->use_wedge_interintra) {
             aom_write_literal(w, mbmi->interintra_wedge_index,
                               get_wedge_bits_lookup(bsize));
@@ -5110,24 +5118,28 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
 #if CONFIG_INTERINTRA
     if (cm->reference_mode != COMPOUND_REFERENCE &&
         cm->allow_interintra_compound) {
+#if !CONFIG_NEW_MULTISYMBOL
       for (i = 0; i < BLOCK_SIZE_GROUPS; i++) {
         if (is_interintra_allowed_bsize_group(i)) {
           av1_cond_prob_diff_update(header_bc, &fc->interintra_prob[i],
                                     cm->counts.interintra[i], probwt);
         }
       }
+#endif
+#if !CONFIG_EC_ADAPT
       for (i = 0; i < BLOCK_SIZE_GROUPS; i++) {
         prob_diff_update(
             av1_interintra_mode_tree, cm->fc->interintra_mode_prob[i],
             counts->interintra_mode[i], INTERINTRA_MODES, probwt, header_bc);
       }
-#if CONFIG_WEDGE
+#endif
+#if CONFIG_WEDGE && !CONFIG_NEW_MULTISYMBOL
       for (i = 0; i < BLOCK_SIZES; i++) {
         if (is_interintra_allowed_bsize(i) && is_interintra_wedge_used(i))
           av1_cond_prob_diff_update(header_bc, &fc->wedge_interintra_prob[i],
                                     cm->counts.wedge_interintra[i], probwt);
       }
-#endif  // CONFIG_WEDGE
+#endif  // CONFIG_WEDGE && CONFIG_NEW_MULTISYMBOL
     }
 #endif  // CONFIG_INTERINTRA
 #if !CONFIG_EC_ADAPT && (CONFIG_COMPOUND_SEGMENT || CONFIG_WEDGE)
