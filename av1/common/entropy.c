@@ -5711,7 +5711,8 @@ void av1_average_tile_inter_cdfs(AV1_COMMON *cm, FRAME_CONTEXT *fc,
   // FIXME: cdfs not defined for super_tx
 
   AVERAGE_TILE_CDFS(inter_compound_mode_cdf)
-  // interintra_mode etc
+  AVERAGE_TILE_CDFS(compound_type_cdf)
+  // FIXME interintra_mode etc
 
   AVERAGE_TILE_CDFS(y_mode_cdf)
 
