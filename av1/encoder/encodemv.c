@@ -30,24 +30,55 @@ void av1_entropy_mv_init(void) {
   av1_tokens_from_tree(mv_fp_encodings, av1_mv_fp_tree);
 }
 
+void write_golomb(aom_writer *w, unsigned int level) {
+  int x = level + 1;
+  int i = x;
+  int length = 0;
+
+  while (i) {
+    i >>= 1;
+    ++length;
+  }
+  assert(length > 0);
+
+  for (i = 0; i < length - 1; ++i) aom_write_bit(w, 0);
+
+  for (i = length - 1; i >= 0; --i) aom_write_bit(w, (x >> i) & 0x01);
+}
+
 static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
                                 MvSubpelPrecision precision) {
   int offset;
   const int sign = comp < 0;
   const int mag = sign ? -comp : comp;
   const int mv_class = av1_get_mv_class(mag - 1, &offset);
-  const int d = offset >> 3;         // int mv data
+  const int d = offset >> 3;  // int mv data
+#if CONFIG_NEW_MULTISYMBOL
+#if !CONFIG_INTRABC
+  (void)precision;
+#endif
+  const int fr = offset & 7;  // full fractional mv data
+#else
   const int fr = (offset >> 1) & 3;  // fractional mv data
   const int hp = offset & 1;         // high precision mv data
+#endif
 
   assert(comp != 0);
 
-  // Sign
+#if CONFIG_NEW_MULTISYMBOL
+  aom_write_bit(w, sign);
+#else
   aom_write(w, sign, mvcomp->sign);
+#endif
 
   // Class
   aom_write_symbol(w, mv_class, mvcomp->class_cdf, MV_CLASSES);
 
+#if CONFIG_NEW_MULTISYMBOL
+  if (mv_class == MV_CLASS_10) {
+    write_golomb(w, d);
+  }
+#else
   // Integer bits
   if (mv_class == MV_CLASS_0) {
     aom_write(w, d, mvcomp->class0[0]);
@@ -56,25 +87,84 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
     const int n = mv_class + CLASS0_BITS - 1;  // number of bits
     for (i = 0; i < n; ++i) aom_write(w, (d >> i) & 1, mvcomp->bits[i]);
   }
+#endif
 
 // Fractional bits
 #if CONFIG_INTRABC
   if (precision > MV_SUBPEL_NONE)
 #endif  // CONFIG_INTRABC
   {
+#if CONFIG_NEW_MULTISYMBOL
+    aom_write_symbol(
+        w, fr,
+        mv_class == MV_CLASS_0
+            ? mvcomp->class0_fp_cdf
+            : (mv_class == MV_CLASS_1 ? mvcomp->class1_fp_cdf : mvcomp->fp_cdf),
+        MV_FULL_FP_SIZE);
+
+#else
     aom_write_symbol(w, fr, mv_class == MV_CLASS_0 ? mvcomp->class0_fp_cdf[d]
                                                    : mvcomp->fp_cdf,
                      MV_FP_SIZE);
+#endif
   }
 
+#if !CONFIG_NEW_MULTISYMBOL
   // High precision bit
   if (precision > MV_SUBPEL_LOW_PRECISION)
     aom_write(w, hp, mv_class == MV_CLASS_0 ? mvcomp->class0_hp : mvcomp->hp);
+#endif
 }
 
 static void build_nmv_component_cost_table(int *mvcost,
                                            const nmv_component *const mvcomp,
                                            MvSubpelPrecision precision) {
+#if CONFIG_NEW_MULTISYMBOL
+#if !CONFIG_INTRABC
+  (void)precision;
+#endif
+  int v;
+  int sign_cost, class_cost[MV_CLASSES];
+  int class0_fp_cost[MV_FULL_FP_SIZE];
+  int class1_fp_cost[MV_FULL_FP_SIZE];
+  int fp_cost[MV_FULL_FP_SIZE];
+
+  sign_cost = av1_cost_literal(1);
+  av1_cost_tokens_from_cdf(class_cost, mvcomp->class_cdf, NULL);
+  av1_cost_tokens_from_cdf(class0_fp_cost, mvcomp->class0_fp_cdf, NULL);
+  av1_cost_tokens_from_cdf(class1_fp_cost, mvcomp->class1_fp_cdf, NULL);
+  av1_cost_tokens_from_cdf(fp_cost, mvcomp->fp_cdf, NULL);
+
+  mvcost[0] = 0;
+  for (v = 1; v <= MV_MAX; ++v) {
+    int z, c, o, d, f, cost = 0;
+    z = v - 1;
+    c = av1_get_mv_class(z, &o);
+    cost += class_cost[c];
+    d = (o >> 3); /* int mv data */
+    f = o & 7;    /* fractional pel mv data */
+
+    if (c == MV_CLASS_10) {
+      int r = d + 1;
+      int nbits = 2 * get_msb(r) + 1;
+      cost += av1_cost_literal(nbits);
+    }
+#if CONFIG_INTRABC
+    if (precision > MV_SUBPEL_NONE)
+#endif  // CONFIG_INTRABC
+    {
+      if (c == MV_CLASS_0) {
+        cost += class0_fp_cost[f];
+      } else if (c == MV_CLASS_1) {
+        cost += class1_fp_cost[f];
+      } else {
+        cost += fp_cost[f];
+      }
+    }
+    mvcost[v] = mvcost[-v] = cost + sign_cost;
+  }
+
+#else
   int i, v;
   int sign_cost[2], class_cost[MV_CLASSES], class0_cost[CLASS0_SIZE];
   int bits_cost[MV_OFFSET_BITS][2];
@@ -135,6 +225,7 @@ static void build_nmv_component_cost_table(int *mvcost,
     mvcost[v] = cost + sign_cost[0];
     mvcost[-v] = cost + sign_cost[1];
   }
+#endif
 }
 
 static void update_mv(aom_writer *w, const unsigned int ct[2], aom_prob *cur_p,

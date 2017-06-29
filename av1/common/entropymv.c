@@ -49,41 +49,78 @@ static const nmv_context default_nmv_context = {
         // Vertical component
         128,                                                   // sign
         { 224, 144, 192, 168, 192, 176, 192, 198, 198, 245 },  // class
+#if CONFIG_NEW_MULTISYMBOL
+        { AOM_ICDF(24209), AOM_ICDF(28692), AOM_ICDF(29918), AOM_ICDF(30999),
+          AOM_ICDF(31256), AOM_ICDF(31482), AOM_ICDF(31695), AOM_ICDF(31882),
+          AOM_ICDF(31960), AOM_ICDF(32028), AOM_ICDF(32768), 0 },
+#else
         { AOM_ICDF(28672), AOM_ICDF(30976), AOM_ICDF(31858), AOM_ICDF(32320),
           AOM_ICDF(32551), AOM_ICDF(32656), AOM_ICDF(32740), AOM_ICDF(32757),
           AOM_ICDF(32762), AOM_ICDF(32767), AOM_ICDF(32768), 0 },  // class_cdf
-        { 216 },                                                   // class0
-        { 136, 140, 148, 160, 176, 192, 224, 234, 234, 240 },      // bits
-        { { 128, 128, 64 }, { 96, 112, 64 } },                     // class0_fp
-        { 64, 96, 64 },                                            // fp
+#endif
+
+        { 216 },                                               // class0
+        { 136, 140, 148, 160, 176, 192, 224, 234, 234, 240 },  // bits
+        { { 128, 128, 64 }, { 96, 112, 64 } },                 // class0_fp
+        { 64, 96, 64 },                                        // fp
+#if CONFIG_NEW_MULTISYMBOL
+        { AOM_ICDF(10237), AOM_ICDF(16382), AOM_ICDF(21501), AOM_ICDF(24573),
+          AOM_ICDF(25853), AOM_ICDF(26621), AOM_ICDF(30462), AOM_ICDF(32768),
+          0 },
+        { AOM_ICDF(7681), AOM_ICDF(12291), AOM_ICDF(17886), AOM_ICDF(21245),
+          AOM_ICDF(23044), AOM_ICDF(24124), AOM_ICDF(29526), AOM_ICDF(32768),
+          0 },
+        { AOM_ICDF(4092), AOM_ICDF(8184), AOM_ICDF(12793), AOM_ICDF(17402),
+          AOM_ICDF(19322), AOM_ICDF(21242), AOM_ICDF(27005), AOM_ICDF(32768),
+          0 },
+#else
         { { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(26624), AOM_ICDF(32768),
             0 },
           { AOM_ICDF(12288), AOM_ICDF(21248), AOM_ICDF(24128), AOM_ICDF(32768),
             0 } },  // class0_fp_cdf
         { AOM_ICDF(8192), AOM_ICDF(17408), AOM_ICDF(21248), AOM_ICDF(32768),
           0 },  // fp_cdf
-        160,    // class0_hp bit
-        128,    // hp
+#endif
+        160,  // class0_hp bit
+        128,  // hp
     },
     {
         // Horizontal component
         128,                                                   // sign
         { 216, 128, 176, 160, 176, 176, 192, 198, 198, 208 },  // class
+#if CONFIG_NEW_MULTISYMBOL
+        { AOM_ICDF(24209), AOM_ICDF(28692), AOM_ICDF(29918), AOM_ICDF(30999),
+          AOM_ICDF(31256), AOM_ICDF(31482), AOM_ICDF(31695), AOM_ICDF(31882),
+          AOM_ICDF(31960), AOM_ICDF(32028), AOM_ICDF(32768), 0 },
+#else
         { AOM_ICDF(28672), AOM_ICDF(30976), AOM_ICDF(31858), AOM_ICDF(32320),
           AOM_ICDF(32551), AOM_ICDF(32656), AOM_ICDF(32740), AOM_ICDF(32757),
           AOM_ICDF(32762), AOM_ICDF(32767), AOM_ICDF(32768), 0 },  // class_cdf
-        { 208 },                                                   // class0
-        { 136, 140, 148, 160, 176, 192, 224, 234, 234, 240 },      // bits
-        { { 128, 128, 64 }, { 96, 112, 64 } },                     // class0_fp
-        { 64, 96, 64 },                                            // fp
+#endif
+        { 208 },                                               // class0
+        { 136, 140, 148, 160, 176, 192, 224, 234, 234, 240 },  // bits
+        { { 128, 128, 64 }, { 96, 112, 64 } },                 // class0_fp
+        { 64, 96, 64 },                                        // fp
+#if CONFIG_NEW_MULTISYMBOL
+        { AOM_ICDF(10237), AOM_ICDF(16382), AOM_ICDF(21501), AOM_ICDF(24573),
+          AOM_ICDF(25853), AOM_ICDF(26621), AOM_ICDF(30462), AOM_ICDF(32768),
+          0 },
+        { AOM_ICDF(7681), AOM_ICDF(12291), AOM_ICDF(17886), AOM_ICDF(21245),
+          AOM_ICDF(23044), AOM_ICDF(24124), AOM_ICDF(29526), AOM_ICDF(32768),
+          0 },
+        { AOM_ICDF(4092), AOM_ICDF(8184), AOM_ICDF(12793), AOM_ICDF(17402),
+          AOM_ICDF(19322), AOM_ICDF(21242), AOM_ICDF(27005), AOM_ICDF(32768),
+          0 },
+#else
         { { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(26624), AOM_ICDF(32768),
             0 },
           { AOM_ICDF(12288), AOM_ICDF(21248), AOM_ICDF(24128), AOM_ICDF(32768),
             0 } },  // class0_fp_cdf
         { AOM_ICDF(8192), AOM_ICDF(17408), AOM_ICDF(21248), AOM_ICDF(32768),
           0 },  // fp_cdf
-        160,    // class0_hp bit
-        128,    // hp
+#endif
+        160,  // class0_hp bit
+        128,  // hp
     } },
 };
 
@@ -130,15 +167,24 @@ static const uint8_t log_in_base_2[] = {
   9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10
 };
 
+#if !CONFIG_NEW_MULTISYMBOL
 static INLINE int mv_class_base(MV_CLASS_TYPE c) {
   return c ? CLASS0_SIZE << (c + 2) : 0;
 }
+#endif
 
 MV_CLASS_TYPE av1_get_mv_class(int z, int *offset) {
+#if !CONFIG_NEW_MULTISYMBOL
   const MV_CLASS_TYPE c = (z >= CLASS0_SIZE * 4096)
                               ? MV_CLASS_10
                               : (MV_CLASS_TYPE)log_in_base_2[z >> 3];
   if (offset) *offset = z - mv_class_base(c);
+#else
+  const int iz = z >> 3;
+  const MV_CLASS_TYPE c = iz >= MV_CLASS_10 ? MV_CLASS_10 : iz;
+  if (offset) *offset = z - (c << 3);
+#endif
+
   return c;
 }
 
@@ -204,7 +250,9 @@ void av1_adapt_mv_probs(AV1_COMMON *cm, int allow_hp) {
       const nmv_component *pre_comp = &pre_nmvc->comps[i];
       const nmv_component_counts *c = &counts->comps[i];
 
+#if !CONFIG_NEW_MULTISYMBOL
       comp->sign = av1_mode_mv_merge_probs(pre_comp->sign, c->sign);
+#endif
       aom_tree_merge_probs(av1_mv_class_tree, pre_comp->classes, c->classes,
                            comp->classes);
       aom_tree_merge_probs(av1_mv_class0_tree, pre_comp->class0, c->class0,

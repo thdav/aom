@@ -20,6 +20,8 @@
 extern "C" {
 #endif
 
+int read_golomb(aom_reader *r);
+
 void av1_read_mode_info(AV1Decoder *const pbi, MACROBLOCKD *xd,
 #if CONFIG_SUPERTX
                         int supertx_enabled,

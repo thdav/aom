@@ -53,22 +53,6 @@ void av1_free_txb_buf(AV1_COMP *cpi) {
 #endif
 }
 
-static void write_golomb(aom_writer *w, int level) {
-  int x = level + 1;
-  int i = x;
-  int length = 0;
-
-  while (i) {
-    i >>= 1;
-    ++length;
-  }
-  assert(length > 0);
-
-  for (i = 0; i < length - 1; ++i) aom_write_bit(w, 0);
-
-  for (i = length - 1; i >= 0; --i) aom_write_bit(w, (x >> i) & 0x01);
-}
-
 void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCKD *xd,
                           aom_writer *w, int block, int plane, TX_SIZE tx_size,
                           const tran_low_t *tcoeff, uint16_t eob,
