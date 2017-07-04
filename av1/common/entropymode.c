@@ -1893,7 +1893,7 @@ const aom_cdf_prob default_palette_y_size_cdf[PALETTE_BLOCK_SIZES][CDF_SIZE(PALE
           { AOM_ICDF(12543), AOM_ICDF(20838), AOM_ICDF(27455), AOM_ICDF(28762), AOM_ICDF(29763), AOM_ICDF(31546), AOM_ICDF(32768), 0 },
 #endif
 };
-#endif
+#endif  // CONFIG_NEW_MULTISYMBOL
 
 const aom_prob
     av1_default_palette_uv_size_prob[PALETTE_BLOCK_SIZES][PALETTE_SIZES - 1] = {
@@ -1907,6 +1907,26 @@ const aom_prob
       { 72, 55, 66, 68, 79, 107 },
 #endif  // CONFIG_EXT_PARTITION
     };
+
+#if CONFIG_NEW_MULTISYMBOL
+const aom_cdf_prob default_palette_uv_size_cdf[PALETTE_BLOCK_SIZES][CDF_SIZE(PALETTE_SIZES)] = {
+  { AOM_ICDF(20480), AOM_ICDF(29888), AOM_ICDF(32453), AOM_ICDF(32715), AOM_ICDF(32751), AOM_ICDF(32766), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(11135), AOM_ICDF(23641), AOM_ICDF(31056), AOM_ICDF(31998), AOM_ICDF(32496), AOM_ICDF(32668), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(9216), AOM_ICDF(23108), AOM_ICDF(30806), AOM_ICDF(31871), AOM_ICDF(32414), AOM_ICDF(32637), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(9984), AOM_ICDF(21999), AOM_ICDF(29192), AOM_ICDF(30645), AOM_ICDF(31640), AOM_ICDF(32402), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(7552), AOM_ICDF(16614), AOM_ICDF(24880), AOM_ICDF(27283), AOM_ICDF(29254), AOM_ICDF(31203), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(9600), AOM_ICDF(20279), AOM_ICDF(27548), AOM_ICDF(29261), AOM_ICDF(30494), AOM_ICDF(31631), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(11391), AOM_ICDF(18656), AOM_ICDF(23727), AOM_ICDF(26058), AOM_ICDF(27788), AOM_ICDF(30278), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(8576), AOM_ICDF(13585), AOM_ICDF(17632), AOM_ICDF(20884), AOM_ICDF(23948), AOM_ICDF(27152), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(15360), AOM_ICDF(24200), AOM_ICDF(26978), AOM_ICDF(30846), AOM_ICDF(31409), AOM_ICDF(32545), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(9216), AOM_ICDF(14276), AOM_ICDF(19043), AOM_ICDF(22689), AOM_ICDF(25799), AOM_ICDF(28712), AOM_ICDF(32768), 0 },
+#if CONFIG_EXT_PARTITION
+  { AOM_ICDF(9216), AOM_ICDF(14276), AOM_ICDF(19043), AOM_ICDF(22689), AOM_ICDF(25799), AOM_ICDF(28712), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(9216), AOM_ICDF(14276), AOM_ICDF(19043), AOM_ICDF(22689), AOM_ICDF(25799), AOM_ICDF(28712), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(9216), AOM_ICDF(14276), AOM_ICDF(19043), AOM_ICDF(22689), AOM_ICDF(25799), AOM_ICDF(28712), AOM_ICDF(32768), 0 },
+#endif
+};
+#endif  // CONFIG_NEW_MULTISYMBOL
 
 // When palette mode is enabled, following probability tables indicate the
 // probabilities to code the "is_palette" bit (i.e. the bit that indicates
@@ -5052,8 +5072,9 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
 //  int jj;
 //  for (jj=0; jj<PALETTE_BLOCK_SIZES; ++jj) {
 //    aom_cdf_prob test_cdf[16];
-//    parse_tree(av1_palette_size_tree, av1_default_palette_y_size_prob[jj], test_cdf);
+//    parse_tree(av1_palette_size_tree, av1_default_palette_uv_size_prob[jj], test_cdf);
 //  }
+//  abort();
 //
   av1_copy(fc->uv_mode_prob, default_uv_probs);
   av1_copy(fc->y_mode_prob, default_if_y_probs);
@@ -5065,6 +5086,7 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
   av1_copy(fc->comp_inter_cdf, default_comp_inter_cdf);
 #if CONFIG_PALETTE
   av1_copy(fc->palette_y_size_cdf, default_palette_y_size_cdf);
+  av1_copy(fc->palette_uv_size_cdf, default_palette_uv_size_cdf);
 #endif
 #endif  // CONFIG_NEW_MULTISYMBOL
 #if CONFIG_EXT_COMP_REFS

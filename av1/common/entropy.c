@@ -5682,6 +5682,7 @@ void av1_average_tile_intra_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[],
 #endif
 #if CONFIG_PALETTE
   AVERAGE_TILE_CDFS(palette_y_size_cdf);
+  AVERAGE_TILE_CDFS(palette_uv_size_cdf);
 #endif
 #endif  // CONFIG_NEW_MULTISYMBOL
 }

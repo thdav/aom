@@ -846,10 +846,13 @@ static void read_palette_mode_info(AV1_COMMON *const cm, MACROBLOCKD *const xd,
     if (aom_read(r, av1_default_palette_uv_mode_prob[palette_uv_mode_ctx],
                  ACCT_STR)) {
       pmi->palette_size[1] =
+#if CONFIG_NEW_MULTISYMBOL
+          aom_read_symbol(r, xd->tile_ctx->palette_uv_size_cdf[bsize - BLOCK_8X8], PALETTE_SIZES, ACCT_STR) + 2;
+#else
           aom_read_tree(r, av1_palette_size_tree,
                         av1_default_palette_uv_size_prob[bsize - BLOCK_8X8],
-                        ACCT_STR) +
-          2;
+                        ACCT_STR) + 2;
+#endif
       n = pmi->palette_size[1];
 #if CONFIG_PALETTE_DELTA_ENCODING
       read_palette_colors_uv(xd, cm->bit_depth, pmi, r);
