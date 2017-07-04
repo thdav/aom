@@ -1726,9 +1726,13 @@ static void write_palette_mode_info(const AV1_COMMON *cm, const MACROBLOCKD *xd,
         w, n > 0,
         av1_default_palette_y_mode_prob[bsize - BLOCK_8X8][palette_y_mode_ctx]);
     if (n > 0) {
+#if CONFIG_NEW_MULTISYMBOL
+      aom_write_symbol(w, n - PALETTE_MIN_SIZE, xd->tile_ctx->palette_y_size_cdf[bsize - BLOCK_8X8], PALETTE_SIZES);
+#else
       av1_write_token(w, av1_palette_size_tree,
                       av1_default_palette_y_size_prob[bsize - BLOCK_8X8],
                       &palette_size_encodings[n - PALETTE_MIN_SIZE]);
+#endif
 #if CONFIG_PALETTE_DELTA_ENCODING
       write_palette_colors_y(xd, pmi, cm->bit_depth, w);
 #else

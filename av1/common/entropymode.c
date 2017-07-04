@@ -1875,6 +1875,26 @@ const aom_prob
 #endif  // CONFIG_EXT_PARTITION
     };
 
+#if CONFIG_NEW_MULTISYMBOL
+const aom_cdf_prob default_palette_y_size_cdf[PALETTE_BLOCK_SIZES][CDF_SIZE(PALETTE_SIZES)] = {
+          { AOM_ICDF(12288), AOM_ICDF(19408), AOM_ICDF(24627), AOM_ICDF(26662), AOM_ICDF(28499), AOM_ICDF(30667), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(2815), AOM_ICDF(4570), AOM_ICDF(9416), AOM_ICDF(10875), AOM_ICDF(13782), AOM_ICDF(19863), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(3839), AOM_ICDF(5986), AOM_ICDF(11949), AOM_ICDF(13413), AOM_ICDF(16286), AOM_ICDF(21823), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(12032), AOM_ICDF(14948), AOM_ICDF(22187), AOM_ICDF(23138), AOM_ICDF(24756), AOM_ICDF(27635), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(14847), AOM_ICDF(20167), AOM_ICDF(25433), AOM_ICDF(26751), AOM_ICDF(28278), AOM_ICDF(30119), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(14336), AOM_ICDF(20240), AOM_ICDF(24840), AOM_ICDF(26079), AOM_ICDF(27908), AOM_ICDF(30034), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(18816), AOM_ICDF(25574), AOM_ICDF(29030), AOM_ICDF(29877), AOM_ICDF(30656), AOM_ICDF(31506), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(23039), AOM_ICDF(27333), AOM_ICDF(30220), AOM_ICDF(30708), AOM_ICDF(31070), AOM_ICDF(31826), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(13696), AOM_ICDF(18911), AOM_ICDF(23620), AOM_ICDF(25371), AOM_ICDF(29821), AOM_ICDF(31617), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(12543), AOM_ICDF(20838), AOM_ICDF(27455), AOM_ICDF(28762), AOM_ICDF(29763), AOM_ICDF(31546), AOM_ICDF(32768), 0 },
+#if CONFIG_EXT_PARTITION
+          { AOM_ICDF(12543), AOM_ICDF(20838), AOM_ICDF(27455), AOM_ICDF(28762), AOM_ICDF(29763), AOM_ICDF(31546), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(12543), AOM_ICDF(20838), AOM_ICDF(27455), AOM_ICDF(28762), AOM_ICDF(29763), AOM_ICDF(31546), AOM_ICDF(32768), 0 },
+          { AOM_ICDF(12543), AOM_ICDF(20838), AOM_ICDF(27455), AOM_ICDF(28762), AOM_ICDF(29763), AOM_ICDF(31546), AOM_ICDF(32768), 0 },
+#endif
+};
+#endif
+
 const aom_prob
     av1_default_palette_uv_size_prob[PALETTE_BLOCK_SIZES][PALETTE_SIZES - 1] = {
       { 160, 196, 228, 213, 175, 230 }, { 87, 148, 208, 141, 166, 163 },
@@ -4966,7 +4986,75 @@ const aom_cdf_prob
 #endif  // CONFIG_ALT_INTRA
     };
 
+static int  parse_tree_rec(const aom_tree_index *tree,
+    const aom_prob *probs, double *ms_probs, int prob_size, double carry_prob, int head, int max_val) {
+  if (prob_size < 0) return max_val;
+  int v0 = tree[head + 0];
+  int v1 = tree[head + 1];
+  double carry_prob0 = carry_prob * probs[head/2] / 256.0;
+  if (v0 <= 0) {
+    ms_probs[-v0] = carry_prob0;
+    max_val = AOMMAX(max_val, -v0);
+  } else {
+    // recurse here
+    max_val = parse_tree_rec(tree, probs, ms_probs, prob_size - 1, carry_prob0, v0, max_val);
+  }
+
+  double carry_prob1 = carry_prob * (256 - probs[head/2]) / 256.0;
+  if (v1 <= 0) {
+    ms_probs[-v1] = carry_prob1;
+    max_val = AOMMAX(max_val, -v1);
+  } else {
+    // recurse here
+    max_val = parse_tree_rec(tree, probs, ms_probs, prob_size - 1, carry_prob1, v1, max_val);
+  }
+
+  return max_val;
+
+}
+static void parse_tree(const aom_tree_index *tree,
+    const aom_prob *probs, aom_cdf_prob *cdf) {
+  double ms_probs[16] = {0};
+  int max_val = -1;
+  max_val = parse_tree_rec(tree, probs, ms_probs, 16, 1.0, 0, max_val);
+  int i;
+  // Rationalise
+  int sum = 0;
+  for (i=0; i<=max_val; ++i) {
+    ms_probs[i] = AOMMAX(1.0, round(ms_probs[i] * CDF_PROB_TOP));
+    sum += (int) ms_probs[i];
+  }
+  int excess = sum - CDF_PROB_TOP;
+  if (excess > 0) {
+    for (i=0; i<=max_val; ++i) {
+      if (ms_probs[i] > excess + 1) {
+        ms_probs[i] -= excess;
+        break;
+      }
+    }
+  }
+  if (excess < 0) {
+    ms_probs[0] += excess;
+  }
+  fprintf(stderr,"{ ");
+  for (i=0; i<=max_val; ++i) {
+    cdf[i] = i==0 ? (int) ms_probs[0] : cdf[i-1] + (int) ms_probs[i];
+    fprintf(stderr,"AOM_ICDF(%d), ",cdf[i]);
+  }
+  fprintf(stderr,"0 },\n");
+}
+
+
+//          aom_read_tree(r, av1_palette_size_tree,
+//                        av1_default_palette_y_size_prob[bsize - BLOCK_8X8],
+//                        ACCT_STR) +
 static void init_mode_probs(FRAME_CONTEXT *fc) {
+//  int jj;
+//  for (jj=0; jj<PALETTE_BLOCK_SIZES; ++jj) {
+//    aom_cdf_prob test_cdf[16];
+//    parse_tree(av1_palette_size_tree, av1_default_palette_y_size_prob[jj], test_cdf);
+//  }
+//
   av1_copy(fc->uv_mode_prob, default_uv_probs);
   av1_copy(fc->y_mode_prob, default_if_y_probs);
   av1_copy(fc->switchable_interp_prob, default_switchable_interp_prob);
@@ -4975,7 +5063,10 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
   av1_copy(fc->comp_inter_prob, default_comp_inter_p);
 #if CONFIG_NEW_MULTISYMBOL
   av1_copy(fc->comp_inter_cdf, default_comp_inter_cdf);
+#if CONFIG_PALETTE
+  av1_copy(fc->palette_y_size_cdf, default_palette_y_size_cdf);
 #endif
+#endif  // CONFIG_NEW_MULTISYMBOL
 #if CONFIG_EXT_COMP_REFS
   av1_copy(fc->comp_ref_type_prob, default_comp_ref_type_p);
   av1_copy(fc->uni_comp_ref_prob, default_uni_comp_ref_p);
