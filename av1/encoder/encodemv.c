@@ -119,7 +119,7 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
 static void build_nmv_component_cost_table(int *mvcost,
                                            const nmv_component *const mvcomp,
                                            MvSubpelPrecision precision) {
-#if CONFIG_NEW_MULTISYMBOL
+#if 1//CONFIG_NEW_MULTISYMBOL
 #if !CONFIG_INTRABC
   (void)precision;
 #endif
@@ -132,8 +132,24 @@ static void build_nmv_component_cost_table(int *mvcost,
   sign_cost = av1_cost_literal(1);
   av1_cost_tokens_from_cdf(class_cost, mvcomp->class_cdf, NULL);
   av1_cost_tokens_from_cdf(class0_fp_cost, mvcomp->class0_fp_cdf, NULL);
-  av1_cost_tokens_from_cdf(class1_fp_cost, mvcomp->class1_fp_cdf, NULL);
+  av1_cost_tokens_from_cdf(class1_fp_cost,  mvcomp->class1_fp_cdf, NULL);
   av1_cost_tokens_from_cdf(fp_cost, mvcomp->fp_cdf, NULL);
+
+//  int ii;
+//  fprintf(stderr, "\n");
+//  for (ii=0 ; ii < MV_FULL_FP_SIZE; ++ii) {
+//    fprintf(stderr,"%d, ",class0_fp_cost[ii]);
+//  }
+//  fprintf(stderr, "\n");
+//  for (ii=0 ; ii < MV_FULL_FP_SIZE; ++ii) {
+//    fprintf(stderr,"%d, ",class1_fp_cost[ii]);
+//  }
+//  fprintf(stderr, "\n");
+//  for (ii=0 ; ii < MV_FULL_FP_SIZE; ++ii) {
+//    fprintf(stderr,"%d, ",fp_cost[ii]);
+//  }
+//  fprintf(stderr, "\n");
+//
 
   mvcost[0] = 0;
   for (v = 1; v <= MV_MAX; ++v) {
@@ -142,6 +158,10 @@ static void build_nmv_component_cost_table(int *mvcost,
     c = av1_get_mv_class(z, &o);
     cost += class_cost[c];
     d = (o >> 3); /* int mv data */
+//    if (c<MV_CLASS_10 && (o!=0|| c!=z)) {
+//      fprintf(stderr, "z=%d, c=%d, o=%d, d=%d\n",z,c,o,d);
+//      abort();
+//    }
     f = o & 7;    /* fractional pel mv data */
 
     if (c == MV_CLASS_10) {
@@ -149,16 +169,21 @@ static void build_nmv_component_cost_table(int *mvcost,
       int nbits = 2 * get_msb(r) + 1;
       cost += av1_cost_literal(nbits);
     }
+//    if (precision <= MV_SUBPEL_LOW_PRECISION)
+//      abort();
 #if CONFIG_INTRABC
     if (precision > MV_SUBPEL_NONE)
 #endif  // CONFIG_INTRABC
     {
       if (c == MV_CLASS_0) {
-        cost += class0_fp_cost[f];
+      cost += av1_cost_zero(256/8 - (3-f)*16);
+//        cost += class0_fp_cost[f];
       } else if (c == MV_CLASS_1) {
-        cost += class1_fp_cost[f];
+      cost += av1_cost_zero(256/8);
+//        cost += class1_fp_cost[7-f];
       } else {
-        cost += fp_cost[f];
+      cost += av1_cost_zero(256/8);
+//        cost += fp_cost[7-f];
       }
     }
     mvcost[v] = mvcost[-v] = cost + sign_cost;
@@ -171,9 +196,14 @@ static void build_nmv_component_cost_table(int *mvcost,
   int class0_fp_cost[CLASS0_SIZE][MV_FP_SIZE], fp_cost[MV_FP_SIZE];
   int class0_hp_cost[2], hp_cost[2];
 
+#if CONFIG_NEW_MULTISYMBOL
+  sign_cost[0] = sign_cost[1] = av1_cost_literal(1);
+#else
   sign_cost[0] = av1_cost_zero(mvcomp->sign);
   sign_cost[1] = av1_cost_one(mvcomp->sign);
-  av1_cost_tokens(class_cost, mvcomp->classes, av1_mv_class_tree);
+#endif
+//  av1_cost_tokens(class_cost, mvcomp->classes, av1_mv_class_tree);
+  av1_cost_tokens_from_cdf(class_cost, mvcomp->class_cdf, NULL);
   av1_cost_tokens(class0_cost, mvcomp->class0, av1_mv_class0_tree);
   for (i = 0; i < MV_OFFSET_BITS; ++i) {
     bits_cost[i][0] = av1_cost_zero(mvcomp->bits[i]);
@@ -202,8 +232,8 @@ static void build_nmv_component_cost_table(int *mvcost,
     if (c == MV_CLASS_0) {
       cost += class0_cost[d];
     } else {
-      const int b = c + CLASS0_BITS - 1; /* number of bits */
-      for (i = 0; i < b; ++i) cost += bits_cost[i][((d >> i) & 1)];
+//      const int b = c + CLASS0_BITS - 1; /* number of bits */
+//      for (i = 0; i < b; ++i) cost += bits_cost[i][((d >> i) & 1)];
     }
 #if CONFIG_INTRABC
     if (precision > MV_SUBPEL_NONE)
