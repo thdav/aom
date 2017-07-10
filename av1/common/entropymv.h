@@ -110,6 +110,8 @@ typedef struct {
   nmv_component comps[2];
 } nmv_context;
 
+extern const nmv_context default_nmv_context;
+
 static INLINE MV_JOINT_TYPE av1_get_mv_joint(const MV *mv) {
   if (mv->row == 0) {
     return mv->col == 0 ? MV_JOINT_ZERO : MV_JOINT_HNZVZ;
@@ -118,6 +120,7 @@ static INLINE MV_JOINT_TYPE av1_get_mv_joint(const MV *mv) {
   }
 }
 
+MV_CLASS_TYPE av1_get_old_mv_class(int z, int *offset);
 MV_CLASS_TYPE av1_get_mv_class(int z, int *offset);
 
 MV_CLASS_TYPE av1_get_old_mv_class(int z, int *offset);

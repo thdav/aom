@@ -41,7 +41,7 @@ const aom_tree_index av1_mv_class0_tree[TREE_SIZE(CLASS0_SIZE)] = {
 const aom_tree_index av1_mv_fp_tree[TREE_SIZE(MV_FP_SIZE)] = { -0, 2,  -1,
                                                                4,  -2, -3 };
 
-static const nmv_context default_nmv_context = {
+const nmv_context default_nmv_context = {
   { 32, 64, 96 },  // joints
   { AOM_ICDF(4096), AOM_ICDF(11264), AOM_ICDF(19328), AOM_ICDF(32768),
     0 },  // joint_cdf
@@ -64,9 +64,8 @@ static const nmv_context default_nmv_context = {
         { { 128, 128, 64 }, { 96, 112, 64 } },                 // class0_fp
         { 64, 96, 64 },                                        // fp
 #if CONFIG_NEW_MULTISYMBOL
-        { AOM_ICDF(10237), AOM_ICDF(16382), AOM_ICDF(21501), AOM_ICDF(24573),
-          AOM_ICDF(25853), AOM_ICDF(26621), AOM_ICDF(30462), AOM_ICDF(32768),
-          0 },
+        {AOM_ICDF(2306), AOM_ICDF(6147), AOM_ICDF(6915), AOM_ICDF(8195), AOM_ICDF(11267), AOM_ICDF(16386), AOM_ICDF(22531), AOM_ICDF(32768), 0}, 
+
         { AOM_ICDF(7681), AOM_ICDF(12291), AOM_ICDF(17886), AOM_ICDF(21245),
           AOM_ICDF(23044), AOM_ICDF(24124), AOM_ICDF(29526), AOM_ICDF(32768),
           0 },
@@ -102,9 +101,7 @@ static const nmv_context default_nmv_context = {
         { { 128, 128, 64 }, { 96, 112, 64 } },                 // class0_fp
         { 64, 96, 64 },                                        // fp
 #if CONFIG_NEW_MULTISYMBOL
-        { AOM_ICDF(10237), AOM_ICDF(16382), AOM_ICDF(21501), AOM_ICDF(24573),
-          AOM_ICDF(25853), AOM_ICDF(26621), AOM_ICDF(30462), AOM_ICDF(32768),
-          0 },
+        {AOM_ICDF(2306), AOM_ICDF(6147), AOM_ICDF(6915), AOM_ICDF(8195), AOM_ICDF(11267), AOM_ICDF(16386), AOM_ICDF(22531), AOM_ICDF(32768), 0}, 
         { AOM_ICDF(7681), AOM_ICDF(12291), AOM_ICDF(17886), AOM_ICDF(21245),
           AOM_ICDF(23044), AOM_ICDF(24124), AOM_ICDF(29526), AOM_ICDF(32768),
           0 },
@@ -167,11 +164,27 @@ static const uint8_t log_in_base_2[] = {
   9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10
 };
 
-#if !CONFIG_NEW_MULTISYMBOL
+//#if !CONFIG_NEW_MULTISYMBOL
 static INLINE int mv_class_base(MV_CLASS_TYPE c) {
   return c ? CLASS0_SIZE << (c + 2) : 0;
 }
+//#endif
+
+MV_CLASS_TYPE av1_get_old_mv_class(int z, int *offset) {
+#if 1 //!CONFIG_NEW_MULTISYMBOL
+  const MV_CLASS_TYPE c = (z >= CLASS0_SIZE * 4096)
+                              ? MV_CLASS_10
+                              : (MV_CLASS_TYPE)log_in_base_2[z >> 3];
+  if (offset) *offset = z - mv_class_base(c);
+#else
+  const int iz = z >> 3;
+  const MV_CLASS_TYPE c = iz >= MV_CLASS_10 ? MV_CLASS_10 : iz;
+  if (offset) *offset = z - (c << 3);
 #endif
+
+  return c;
+}
+
 
 MV_CLASS_TYPE av1_get_mv_class(int z, int *offset) {
 #if !CONFIG_NEW_MULTISYMBOL
