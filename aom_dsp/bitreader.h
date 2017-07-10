@@ -247,6 +247,19 @@ static INLINE int av1_read_golomb(aom_reader *r) {
 
   return x - 1;
 }
+static INLINE int av1_read_ternary_golomb(aom_reader  *r, aom_cdf_prob *probs) {
+  int x = 0;
+  int length = 0;
+
+  int i = aom_read_symbol(r, probs, 3, ACCT_STR);
+  while (i != 2  && length < 32) {
+    x |= i << length++;
+    i = aom_read_symbol(r, probs, 3, ACCT_STR);
+  }
+
+  return (x | (1<<length)) - 1;
+
+}
 
 #ifdef __cplusplus
 }  // extern "C"

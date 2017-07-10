@@ -1306,7 +1306,7 @@ static int read_mv_component(aom_reader *r, nmv_component *mvcomp,
   const int class1 = mv_class == MV_CLASS_1;
   mag = mv_class << 3;
   if (mv_class == MV_CLASS_10) {
-    d = av1_read_golomb(r);
+    d = av1_read_ternary_golomb(r, mvcomp->class_tail_cdf);
   }
 #else
   // Integer part

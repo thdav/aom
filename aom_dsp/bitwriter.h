@@ -214,6 +214,22 @@ static INLINE void av1_write_golomb(aom_writer *w, unsigned int level) {
 
   for (i = length - 1; i >= 0; --i) aom_write_bit(w, (x >> i) & 0x01);
 }
+static INLINE void av1_write_ternary_golomb(aom_writer *w, unsigned int level, aom_cdf_prob *probs) {
+  int x = level + 1;
+  int i = x;
+  int length = 0;
+
+  while (i) {
+    i >>= 1;
+    ++length;
+  }
+  assert(length > 0);
+  for (i = 0 ; i < length - 1; ++i) {
+    aom_write_symbol(w, (x >> i) & 0x01, probs, 3);
+  }
+  aom_write_symbol(w, 2, probs, 3);
+}
+
 
 #ifdef __cplusplus
 }  // extern "C"

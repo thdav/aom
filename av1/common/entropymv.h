@@ -96,6 +96,7 @@ typedef struct {
   aom_cdf_prob class0_fp_cdf[CDF_SIZE(MV_FULL_FP_SIZE)];
   aom_cdf_prob class1_fp_cdf[CDF_SIZE(MV_FULL_FP_SIZE)];
   aom_cdf_prob fp_cdf[CDF_SIZE(MV_FULL_FP_SIZE)];
+  aom_cdf_prob class_tail_cdf[CDF_SIZE(3)];
 #else
   aom_cdf_prob class0_fp_cdf[CLASS0_SIZE][CDF_SIZE(MV_FP_SIZE)];
   aom_cdf_prob fp_cdf[CDF_SIZE(MV_FP_SIZE)];
@@ -110,6 +111,8 @@ typedef struct {
   nmv_component comps[2];
 } nmv_context;
 
+extern const nmv_context default_nmv_context;
+
 static INLINE MV_JOINT_TYPE av1_get_mv_joint(const MV *mv) {
   if (mv->row == 0) {
     return mv->col == 0 ? MV_JOINT_ZERO : MV_JOINT_HNZVZ;
@@ -118,6 +121,7 @@ static INLINE MV_JOINT_TYPE av1_get_mv_joint(const MV *mv) {
   }
 }
 
+MV_CLASS_TYPE av1_get_old_mv_class(int z, int *offset);
 MV_CLASS_TYPE av1_get_mv_class(int z, int *offset);
 
 MV_CLASS_TYPE av1_get_old_mv_class(int z, int *offset);

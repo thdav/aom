@@ -5643,6 +5643,7 @@ void av1_average_tile_mv_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[],
       AVERAGE_TILE_CDFS(nmvc[j].comps[k].class0_fp_cdf);
 #if CONFIG_NEW_MULTISYMBOL
       AVERAGE_TILE_CDFS(nmvc[j].comps[k].class1_fp_cdf);
+      AVERAGE_TILE_CDFS(nmvc[j].comps[k].class_tail_cdf);
 #endif
       AVERAGE_TILE_CDFS(nmvc[j].comps[k].fp_cdf);
     }
