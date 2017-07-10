@@ -150,7 +150,7 @@ void av1_indices_from_tree(int *ind, int *inv, const aom_tree_index *tree);
 
 #if CONFIG_EC_ADAPT
 static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
-  const int rate = 4 + (cdf[nsymbs] > 31) + get_msb(nsymbs);
+  const int rate = 4 + (cdf[nsymbs] > 30) + get_msb(nsymbs) - CONFIG_NEW_MULTISYMBOL;
   const int rate2 = 5;
   int i, tmp;
   int diff;
@@ -181,7 +181,7 @@ static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
     cdf[i] += diff;
   }
 #endif
-  cdf[nsymbs] += (cdf[nsymbs] < 32);
+  cdf[nsymbs] += (cdf[nsymbs] < 31);
 }
 #endif
 
