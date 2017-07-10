@@ -37,7 +37,7 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
   const int mag = sign ? -comp : comp;
   const int mv_class = av1_get_mv_class(mag - 1, &offset);
   const int d = offset >> 3;  // int mv data
-#if CONFIG_NEW_MULTISYMBOL
+#if 0//CONFIG_NEW_MULTISYMBOL
 #if !CONFIG_INTRABC
   (void)precision;
 #endif
@@ -78,7 +78,7 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
   if (precision > MV_SUBPEL_NONE)
 #endif  // CONFIG_INTRABC
   {
-#if CONFIG_NEW_MULTISYMBOL
+#if 0//CONFIG_NEW_MULTISYMBOL
     aom_write_symbol(
         w, fr,
         mv_class == MV_CLASS_0
@@ -93,7 +93,7 @@ static void encode_mv_component(aom_writer *w, int comp, nmv_component *mvcomp,
 #endif
   }
 
-#if !CONFIG_NEW_MULTISYMBOL
+#if 1 //!CONFIG_NEW_MULTISYMBOL
   // High precision bit
   if (precision > MV_SUBPEL_LOW_PRECISION)
     aom_write(w, hp, mv_class == MV_CLASS_0 ? mvcomp->class0_hp : mvcomp->hp);

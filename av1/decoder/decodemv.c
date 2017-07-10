@@ -1295,9 +1295,9 @@ static int read_mv_component(aom_reader *r, nmv_component *mvcomp,
   (void)usehp;
   const int sign = aom_read_bit(r, ACCT_STR);
 #else
-  int hp;
   const int sign = aom_read(r, mvcomp->sign, ACCT_STR);
 #endif
+  int hp;
 
   const int mv_class =
       aom_read_symbol(r, mvcomp->class_cdf, MV_CLASSES, ACCT_STR);
@@ -1327,7 +1327,7 @@ static int read_mv_component(aom_reader *r, nmv_component *mvcomp,
   if (use_subpel) {
 #endif  // CONFIG_INTRABC
         // Fractional part
-#if CONFIG_NEW_MULTISYMBOL
+#if 0//CONFIG_NEW_MULTISYMBOL
     fr = aom_read_symbol(
         r, class0 ? mvcomp->class0_fp_cdf
                   : (class1 ? mvcomp->class1_fp_cdf : mvcomp->fp_cdf),
@@ -1342,7 +1342,7 @@ static int read_mv_component(aom_reader *r, nmv_component *mvcomp,
 #endif
 #if CONFIG_INTRABC
   } else {
-#if CONFIG_NEW_MULTISYMBOL
+#if 0//CONFIG_NEW_MULTISYMBOL
     fr = 7;
 #else
     fr = 3;
@@ -1351,7 +1351,7 @@ static int read_mv_component(aom_reader *r, nmv_component *mvcomp,
   }
 #endif  // CONFIG_INTRABC
 
-#if !CONFIG_NEW_MULTISYMBOL
+#if 1//!CONFIG_NEW_MULTISYMBOL
   mag += ((d << 3) | (fr << 1) | hp) + 1;
 #else
   mag += ((d << 3) | fr) + 1;

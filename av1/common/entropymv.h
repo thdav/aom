@@ -93,9 +93,11 @@ typedef struct {
   aom_prob class0_fp[CLASS0_SIZE][MV_FP_SIZE - 1];
   aom_prob fp[MV_FP_SIZE - 1];
 #if CONFIG_NEW_MULTISYMBOL
-  aom_cdf_prob class0_fp_cdf[CDF_SIZE(MV_FULL_FP_SIZE)];
-  aom_cdf_prob class1_fp_cdf[CDF_SIZE(MV_FULL_FP_SIZE)];
-  aom_cdf_prob fp_cdf[CDF_SIZE(MV_FULL_FP_SIZE)];
+//  aom_cdf_prob class0_fp_cdf[CDF_SIZE(MV_FULL_FP_SIZE)];
+  aom_cdf_prob class0_fp_cdf[CLASS0_SIZE][CDF_SIZE(MV_FP_SIZE)];
+//  aom_cdf_prob class1_fp_cdf[CDF_SIZE(MV_FULL_FP_SIZE)];
+//  aom_cdf_prob fp_cdf[CDF_SIZE(MV_FULL_FP_SIZE)];
+  aom_cdf_prob fp_cdf[CDF_SIZE(MV_FP_SIZE)];
   aom_cdf_prob class_tail_cdf[CDF_SIZE(3)];
 #else
   aom_cdf_prob class0_fp_cdf[CLASS0_SIZE][CDF_SIZE(MV_FP_SIZE)];

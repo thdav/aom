@@ -63,7 +63,7 @@ const nmv_context default_nmv_context = {
         { 136, 140, 148, 160, 176, 192, 224, 234, 234, 240 },  // bits
         { { 128, 128, 64 }, { 96, 112, 64 } },                 // class0_fp
         { 64, 96, 64 },                                        // fp
-#if CONFIG_NEW_MULTISYMBOL
+#if 0//CONFIG_NEW_MULTISYMBOL
         {AOM_ICDF(2306), AOM_ICDF(6147), AOM_ICDF(6915), AOM_ICDF(8195), AOM_ICDF(11267), AOM_ICDF(16386), AOM_ICDF(22531), AOM_ICDF(32768), 0}, 
 
         { AOM_ICDF(7681), AOM_ICDF(12291), AOM_ICDF(17886), AOM_ICDF(21245),
@@ -101,7 +101,7 @@ const nmv_context default_nmv_context = {
         { 136, 140, 148, 160, 176, 192, 224, 234, 234, 240 },  // bits
         { { 128, 128, 64 }, { 96, 112, 64 } },                 // class0_fp
         { 64, 96, 64 },                                        // fp
-#if CONFIG_NEW_MULTISYMBOL
+#if 0//CONFIG_NEW_MULTISYMBOL
         {AOM_ICDF(2306), AOM_ICDF(6147), AOM_ICDF(6915), AOM_ICDF(8195), AOM_ICDF(11267), AOM_ICDF(16386), AOM_ICDF(22531), AOM_ICDF(32768), 0}, 
         { AOM_ICDF(7681), AOM_ICDF(12291), AOM_ICDF(17886), AOM_ICDF(21245),
           AOM_ICDF(23044), AOM_ICDF(24124), AOM_ICDF(29526), AOM_ICDF(32768),
