@@ -1133,23 +1133,23 @@ static const aom_prob default_compound_type_probs[BLOCK_SIZES]
 static const aom_cdf_prob
     default_compound_type_cdf[BLOCK_SIZES][CDF_SIZE(COMPOUND_TYPES)] = {
 #if CONFIG_CHROMA_2X2 || CONFIG_CHROMA_SUB8X8
-      { 16384, 8192, 0, 0 },
-      { 16384, 8192, 0, 0 },
-      { 16384, 8192, 0, 0 },
+      { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
 #endif
-      { 16384, 8192, 0, 0 },
-      { 128, 64, 0, 0 },
-      { 128, 64, 0, 0 },
-      { 24320, 19475, 0, 0 },
-      { 23552, 20332, 0, 0 },
-      { 22656, 20089, 0, 0 },
-      { 23680, 22015, 0, 0 },
-      { 22400, 19862, 0, 0 },
-      { 22400, 20125, 0, 0 },
-      { 23936, 22159, 0, 0 },
-      { 19456, 19380, 0, 0 },
-      { 20096, 20017, 0, 0 },
-      { 23168, 23077, 0, 0 },
+      { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(32576), AOM_ICDF(32704), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(32576), AOM_ICDF(32704), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(8448), AOM_ICDF(13293), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(9216), AOM_ICDF(12436), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(10112), AOM_ICDF(12679), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(9088), AOM_ICDF(10753), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(10368), AOM_ICDF(12906), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(10368), AOM_ICDF(12643), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(8832), AOM_ICDF(10609), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(13312), AOM_ICDF(13388), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(12672), AOM_ICDF(12751), AOM_ICDF(32768), 0 },
+      { AOM_ICDF(9600), AOM_ICDF(9691), AOM_ICDF(32768), 0 },
 #if CONFIG_EXT_PARTITION
       { AOM_ICDF(32640), AOM_ICDF(32641), AOM_ICDF(32768), 0 },  // 255, 1
       { AOM_ICDF(32640), AOM_ICDF(32641), AOM_ICDF(32768), 0 },
@@ -1238,10 +1238,12 @@ static const aom_prob
 #if CONFIG_EC_ADAPT
 static const aom_cdf_prob
     default_interintra_mode_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(INTERINTRA_MODES)] =
-        { { 16384, 8192, 4096, 0, 0 },
-          { 29696, 25752, 13781, 0, 0 },
-          { 27904, 24307, 15287, 0, 0 },
-          { 26240, 24087, 13737, 0, 0 } };
+        {
+          {AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(28672), AOM_ICDF(32768), 0 },
+          {AOM_ICDF(3072), AOM_ICDF(7016), AOM_ICDF(18987), AOM_ICDF(32768), 0 },
+          {AOM_ICDF(4864), AOM_ICDF(8461), AOM_ICDF(17481), AOM_ICDF(32768), 0 },
+          {AOM_ICDF(6528), AOM_ICDF(8681), AOM_ICDF(19031), AOM_ICDF(32768), 0 }
+          };
 #endif
 
 static const aom_prob default_wedge_interintra_prob[BLOCK_SIZES] = {
@@ -5285,15 +5287,16 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
 #if CONFIG_EC_ADAPT
   av1_copy(fc->inter_compound_mode_cdf, default_inter_compound_mode_cdf);
   int ii, jj;
-  for (ii=0; ii<INTER_MODE_CONTEXTS; ++ii) {
+  for (ii=0; ii<BLOCK_SIZE_GROUPS; ++ii) {
     fprintf(stderr,"\n{");
-    for (jj=0; jj<INTER_COMPOUND_MODES; ++jj) {
-      fprintf(stderr,"AOM_ICDF(%d), ",32768 - default_inter_compound_mode_cdf[ii][jj]);
+    for (jj=0; jj<INTERINTRA_MODES; ++jj) {
+      fprintf(stderr,"AOM_ICDF(%d), ",32768 - default_interintra_mode_cdf[ii][jj]);
     }
     fprintf(stderr,"0 },");
   }
   fprintf(stderr,"\n");
   abort();
+//    default_interintra_mode_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(INTERINTRA_MODES)] =
 //    default_inter_compound_mode_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(
 //        INTER_COMPOUND_MODES)] = {
 #endif
