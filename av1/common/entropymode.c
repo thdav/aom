@@ -1440,30 +1440,30 @@ static const aom_prob default_motion_mode_prob[BLOCK_SIZES][MOTION_MODES - 1] =
     };
 
 #if CONFIG_EC_ADAPT
-static const aom_cdf_prob // FIXME : recalculate
+static const aom_cdf_prob
     default_motion_mode_cdf[BLOCK_SIZES][CDF_SIZE(MOTION_MODES)] = {
 #if CONFIG_CHROMA_2X2 || CONFIG_CHROMA_SUB8X8
-      { AOM_ICDF(32640), AOM_ICDF(32740), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(32640), AOM_ICDF(32740), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(32640), AOM_ICDF(32740), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
 #endif
-      { AOM_ICDF(32640), AOM_ICDF(32740), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(32640), AOM_ICDF(32740), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(32640), AOM_ICDF(32740), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(19328), AOM_ICDF(29828), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(19584), AOM_ICDF(29884), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(18432), AOM_ICDF(29632), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(22784), AOM_ICDF(30584), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(21120), AOM_ICDF(30220), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(20480), AOM_ICDF(30080), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(26496), AOM_ICDF(31396), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(24960), AOM_ICDF(31060), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(21504), AOM_ICDF(30304), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(31232), AOM_ICDF(32432), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(16384), AOM_ICDF(24576), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(7936), AOM_ICDF(19091), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(4991), AOM_ICDF(19205), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(4992), AOM_ICDF(19314), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(15104), AOM_ICDF(21590), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(9855), AOM_ICDF(21043), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(12800), AOM_ICDF(22238), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(24320), AOM_ICDF(26498), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(26496), AOM_ICDF(28995), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(25216), AOM_ICDF(28166), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(30592), AOM_ICDF(31238), AOM_ICDF(32768), 0 },
 #if CONFIG_EXT_PARTITION
-      { AOM_ICDF(32256), AOM_ICDF(32656), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(32256), AOM_ICDF(32656), AOM_ICDF(32768), 0 },
-      { AOM_ICDF(32256), AOM_ICDF(32656), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(32256), AOM_ICDF(32656), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(32256), AOM_ICDF(32656), AOM_ICDF(32768), 0 },
+ { AOM_ICDF(32256), AOM_ICDF(32656), AOM_ICDF(32768), 0 },
 #endif
     };
 #endif  // !CONFIG_EC_ADAPT
@@ -5209,6 +5209,7 @@ const aom_cdf_prob
 #endif  // CONFIG_ALT_INTRA
     };
 
+
 static void init_mode_probs(FRAME_CONTEXT *fc) {
 #if !CONFIG_EC_ADAPT
   av1_copy(fc->uv_mode_prob, default_uv_probs);
@@ -5296,21 +5297,6 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
   av1_copy(fc->inter_compound_mode_probs, default_inter_compound_mode_probs);
 #if CONFIG_EC_ADAPT
   av1_copy(fc->inter_compound_mode_cdf, default_inter_compound_mode_cdf);
-  int ii, jj;
-  for (ii=0; ii<SWITCHABLE_FILTER_CONTEXTS; ++ii) {
-    fprintf(stderr,"\n{");
-    for (jj=0; jj<SWITCHABLE_FILTERS; ++jj) {
-      fprintf(stderr,"AOM_ICDF(%d), ",32768 - default_switchable_interp_cdf[ii][jj]);
-    }
-    fprintf(stderr,"0 },");
-  }
-  fprintf(stderr,"\n");
-  abort();
-//      default_switchable_interp_cdf[SWITCHABLE_FILTER_CONTEXTS][CDF_SIZE(
-//          SWITCHABLE_FILTERS)]
-//    default_interintra_mode_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(INTERINTRA_MODES)] =
-//    default_inter_compound_mode_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(
-//        INTER_COMPOUND_MODES)] = {
 #endif
 #if CONFIG_COMPOUND_SINGLEREF
   av1_copy(fc->inter_singleref_comp_mode_probs,
