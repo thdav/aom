@@ -1440,7 +1440,7 @@ static const aom_prob default_motion_mode_prob[BLOCK_SIZES][MOTION_MODES - 1] =
     };
 
 #if CONFIG_EC_ADAPT
-static const aom_cdf_prob
+static const aom_cdf_prob // FIXME : recalculate
     default_motion_mode_cdf[BLOCK_SIZES][CDF_SIZE(MOTION_MODES)] = {
 #if CONFIG_CHROMA_2X2 || CONFIG_CHROMA_SUB8X8
       { AOM_ICDF(32640), AOM_ICDF(32740), AOM_ICDF(32768), 0 },
@@ -1482,23 +1482,23 @@ static const aom_prob default_obmc_prob[BLOCK_SIZES] = {
 #if CONFIG_NEW_MULTISYMBOL
 static const aom_cdf_prob default_obmc_cdf[BLOCK_SIZES][CDF_SIZE(2)] = {
 #if CONFIG_CHROMA_2X2 || CONFIG_CHROMA_SUB8X8
-  { AOM_ICDF(255 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(255 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(255 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(128 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(128 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(128 * 128), AOM_ICDF(32768), 0 },
 #endif
-  { AOM_ICDF(255 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(255 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(255 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(151 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(153 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(128 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(128 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(128 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(45 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(79 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(75 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(130 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(141 * 128), AOM_ICDF(32768), 0 },
   { AOM_ICDF(144 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(178 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(165 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(160 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(207 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(195 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(168 * 128), AOM_ICDF(32768), 0 },
-  { AOM_ICDF(244 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(208 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(201 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(186 * 128), AOM_ICDF(32768), 0 },
+  { AOM_ICDF(231 * 128), AOM_ICDF(32768), 0 },
 #if CONFIG_EXT_PARTITION
   { AOM_ICDF(252 * 128), AOM_ICDF(32768), 0 },
   { AOM_ICDF(252 * 128), AOM_ICDF(32768), 0 },
