@@ -3018,12 +3018,22 @@ static const aom_cdf_prob
 static const aom_cdf_prob
     default_switchable_interp_cdf[SWITCHABLE_FILTER_CONTEXTS][CDF_SIZE(
         SWITCHABLE_FILTERS)] = {
-      { 512, 114, 0, 0 },     { 29952, 117, 0, 0 },   { 32256, 32004, 0, 0 },
-      { 2304, 990, 0, 0 },    { 384, 285, 0, 0 },     { 29696, 116, 0, 0 },
-      { 32512, 32385, 0, 0 }, { 7424, 6235, 0, 0 },   { 768, 237, 0, 0 },
-      { 30720, 120, 0, 0 },   { 32384, 31878, 0, 0 }, { 3840, 1410, 0, 0 },
-      { 1152, 981, 0, 0 },    { 28544, 335, 0, 0 },   { 32640, 32512, 0, 0 },
-      { 15360, 14520, 0, 0 }
+      {AOM_ICDF(32256), AOM_ICDF(32654), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(2816), AOM_ICDF(32651), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(512), AOM_ICDF(764), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(30464), AOM_ICDF(31778), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(32384), AOM_ICDF(32483), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(3072), AOM_ICDF(32652), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(256), AOM_ICDF(383), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(25344), AOM_ICDF(26533), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(32000), AOM_ICDF(32531), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(2048), AOM_ICDF(32648), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(384), AOM_ICDF(890), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(28928), AOM_ICDF(31358), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(31616), AOM_ICDF(31787), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(4224), AOM_ICDF(32433), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(128), AOM_ICDF(256), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(17408), AOM_ICDF(18248), AOM_ICDF(32768), 0 }
     };
 #endif  // USE_EXTRA_FILTER
 #else   // CONFIG_DUAL_FILTER
@@ -5287,15 +5297,17 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
 #if CONFIG_EC_ADAPT
   av1_copy(fc->inter_compound_mode_cdf, default_inter_compound_mode_cdf);
   int ii, jj;
-  for (ii=0; ii<BLOCK_SIZE_GROUPS; ++ii) {
+  for (ii=0; ii<SWITCHABLE_FILTER_CONTEXTS; ++ii) {
     fprintf(stderr,"\n{");
-    for (jj=0; jj<INTERINTRA_MODES; ++jj) {
-      fprintf(stderr,"AOM_ICDF(%d), ",32768 - default_interintra_mode_cdf[ii][jj]);
+    for (jj=0; jj<SWITCHABLE_FILTERS; ++jj) {
+      fprintf(stderr,"AOM_ICDF(%d), ",32768 - default_switchable_interp_cdf[ii][jj]);
     }
     fprintf(stderr,"0 },");
   }
   fprintf(stderr,"\n");
   abort();
+//      default_switchable_interp_cdf[SWITCHABLE_FILTER_CONTEXTS][CDF_SIZE(
+//          SWITCHABLE_FILTERS)]
 //    default_interintra_mode_cdf[BLOCK_SIZE_GROUPS][CDF_SIZE(INTERINTRA_MODES)] =
 //    default_inter_compound_mode_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(
 //        INTER_COMPOUND_MODES)] = {
