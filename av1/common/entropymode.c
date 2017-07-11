@@ -1050,13 +1050,13 @@ static const aom_prob default_inter_compound_mode_probs
 static const aom_cdf_prob
     default_inter_compound_mode_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(
         INTER_COMPOUND_MODES)] = {
-      { 13056, 4539, 1876, 1331, 1056, 633, 408, 0, 0 },
-      { 23168, 7964, 3500, 2445, 1966, 1042, 591, 0, 0 },
-      { 31872, 10334, 5753, 3742, 3015, 1654, 1171, 0, 0 },
-      { 31744, 16864, 10641, 7347, 5904, 3772, 2767, 0, 0 },
-      { 32256, 21546, 15551, 11323, 9295, 6635, 5218, 0, 0 },
-      { 29824, 19455, 15554, 12017, 9557, 7268, 5776, 0, 0 },
-      { 29312, 23701, 18699, 15861, 13951, 11554, 9629, 0, 0 }
+      {AOM_ICDF(19712), AOM_ICDF(28229), AOM_ICDF(30892), AOM_ICDF(31437), AOM_ICDF(31712), AOM_ICDF(32135), AOM_ICDF(32360), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(9600), AOM_ICDF(24804), AOM_ICDF(29268), AOM_ICDF(30323), AOM_ICDF(30802), AOM_ICDF(31726), AOM_ICDF(32177), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(896), AOM_ICDF(22434), AOM_ICDF(27015), AOM_ICDF(29026), AOM_ICDF(29753), AOM_ICDF(31114), AOM_ICDF(31597), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(1024), AOM_ICDF(15904), AOM_ICDF(22127), AOM_ICDF(25421), AOM_ICDF(26864), AOM_ICDF(28996), AOM_ICDF(30001), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(512), AOM_ICDF(11222), AOM_ICDF(17217), AOM_ICDF(21445), AOM_ICDF(23473), AOM_ICDF(26133), AOM_ICDF(27550), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(2944), AOM_ICDF(13313), AOM_ICDF(17214), AOM_ICDF(20751), AOM_ICDF(23211), AOM_ICDF(25500), AOM_ICDF(26992), AOM_ICDF(32768), 0 },
+      {AOM_ICDF(3456), AOM_ICDF(9067), AOM_ICDF(14069), AOM_ICDF(16907), AOM_ICDF(18817), AOM_ICDF(21214), AOM_ICDF(23139), AOM_ICDF(32768), 0 },
     };
 #endif
 
@@ -5284,6 +5284,18 @@ static void init_mode_probs(FRAME_CONTEXT *fc) {
   av1_copy(fc->inter_compound_mode_probs, default_inter_compound_mode_probs);
 #if CONFIG_EC_ADAPT
   av1_copy(fc->inter_compound_mode_cdf, default_inter_compound_mode_cdf);
+  int ii, jj;
+  for (ii=0; ii<INTER_MODE_CONTEXTS; ++ii) {
+    fprintf(stderr,"\n{");
+    for (jj=0; jj<INTER_COMPOUND_MODES; ++jj) {
+      fprintf(stderr,"AOM_ICDF(%d), ",32768 - default_inter_compound_mode_cdf[ii][jj]);
+    }
+    fprintf(stderr,"0 },");
+  }
+  fprintf(stderr,"\n");
+  abort();
+//    default_inter_compound_mode_cdf[INTER_MODE_CONTEXTS][CDF_SIZE(
+//        INTER_COMPOUND_MODES)] = {
 #endif
 #if CONFIG_COMPOUND_SINGLEREF
   av1_copy(fc->inter_singleref_comp_mode_probs,
