@@ -1498,6 +1498,8 @@ int av1_optimize_txb(const AV1_COMMON *cm, MACROBLOCK *x, int plane, int block,
   const int64_t rdmult =
       (x->rdmult * plane_rd_mult[is_inter][plane_type] + 2) >> 2;
 
+  return eob;
+
   TxbInfo txb_info = { qcoeff,  dqcoeff, tcoeff,     dequant, shift,
                        tx_size, txs_ctx, bwl,        stride,  height,
                        eob,     seg_eob, scan_order, txb_ctx, rdmult };
