@@ -5012,38 +5012,38 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
 #if CONFIG_LOOP_RESTORATION
   encode_restoration(cm, header_bc);
 #endif  // CONFIG_LOOP_RESTORATION
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
   update_txfm_probs(cm, header_bc, counts);
 #endif
-#if CONFIG_EXT_TX && CONFIG_RECT_TX && CONFIG_RECT_TX_EXT
+#if 0//CONFIG_EXT_TX && CONFIG_RECT_TX && CONFIG_RECT_TX_EXT
   if (cm->tx_mode == TX_MODE_SELECT)
     av1_cond_prob_diff_update(header_bc, &cm->fc->quarter_tx_size_prob,
                               cm->counts.quarter_tx_size, probwt);
 #endif  // CONFIG_EXT_TX && CONFIG_RECT_TX && CONFIG_RECT_TX_EXT
-#if CONFIG_LV_MAP
+#if 0//CONFIG_LV_MAP
   av1_write_txb_probs(cpi, header_bc);
 #else
 #if !CONFIG_PVQ
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
   update_coef_probs(cpi, header_bc);
 #endif  // !CONFIG_EC_ADAPT
 #endif  // CONFIG_PVQ
 #endif  // CONFIG_LV_MAP
 
-#if CONFIG_VAR_TX
+#if 0//CONFIG_VAR_TX
   update_txfm_partition_probs(cm, header_bc, counts, probwt);
 #endif
 
-#if !CONFIG_NEW_MULTISYMBOL
+#if 0//!CONFIG_NEW_MULTISYMBOL
   update_skip_probs(cm, header_bc, counts);
 #endif
-#if !CONFIG_EC_ADAPT && CONFIG_DELTA_Q
+#if 0//!CONFIG_EC_ADAPT && CONFIG_DELTA_Q
   update_delta_q_probs(cm, header_bc, counts);
 #if CONFIG_EXT_DELTA_Q
   update_delta_lf_probs(cm, header_bc, counts);
 #endif
 #endif
-#if !CONFIG_EC_ADAPT
+#if 0///!CONFIG_EC_ADAPT
   update_seg_probs(cpi, header_bc);
 
   for (i = 0; i < INTRA_MODES; ++i) {
@@ -5099,24 +5099,24 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
 #endif
     av1_copy(cm->fc->kf_y_cdf, av1_kf_y_mode_cdf);
 
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
     for (i = 0; i < INTRA_MODES; ++i)
       for (j = 0; j < INTRA_MODES; ++j)
         prob_diff_update(av1_intra_mode_tree, cm->kf_y_prob[i][j],
                          counts->kf_y_mode[i][j], INTRA_MODES, probwt,
                          header_bc);
 #endif  // CONFIG_EC_ADAPT
-#if CONFIG_INTRABC
+#if 0//CONFIG_INTRABC
     if (cm->allow_screen_content_tools) {
       av1_cond_prob_diff_update(header_bc, &fc->intrabc_prob,
                                 cm->counts.intrabc, probwt);
     }
 #endif
   } else {
-#if !CONFIG_NEW_MULTISYMBOL
+#if 0//!CONFIG_NEW_MULTISYMBOL
     update_inter_mode_probs(cm, header_bc, counts);
 #endif
-#if CONFIG_EXT_INTER
+#if 0//CONFIG_EXT_INTER
 #if !CONFIG_EC_ADAPT
     update_inter_compound_mode_probs(cm, probwt, header_bc);
 #endif
@@ -5168,7 +5168,7 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
 #endif  // !CONFIG_EC_ADAPT && (CONFIG_COMPOUND_SEGMENT || CONFIG_WEDGE)
 #endif  // CONFIG_EXT_INTER
 
-#if CONFIG_MOTION_VAR || CONFIG_WARPED_MOTION
+#if 0//CONFIG_MOTION_VAR || CONFIG_WARPED_MOTION
     for (i = BLOCK_8X8; i < BLOCK_SIZES; ++i)
       prob_diff_update(av1_motion_mode_tree, fc->motion_mode_prob[i],
                        counts->motion_mode[i], MOTION_MODES, probwt, header_bc);
@@ -5180,18 +5180,18 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
     }
 #endif
 #endif  // CONFIG_MOTION_VAR || CONFIG_WARPED_MOTION
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
     if (cm->interp_filter == SWITCHABLE)
       update_switchable_interp_probs(cm, header_bc, counts);
 #endif
 
-#if !CONFIG_NEW_MULTISYMBOL
+#if 0//!CONFIG_NEW_MULTISYMBOL
     for (i = 0; i < INTRA_INTER_CONTEXTS; i++)
       av1_cond_prob_diff_update(header_bc, &fc->intra_inter_prob[i],
                                 counts->intra_inter[i], probwt);
 #endif
 
-#if !CONFIG_NEW_MULTISYMBOL
+#if 0//!CONFIG_NEW_MULTISYMBOL
     if (cpi->allow_comp_inter_inter) {
       const int use_hybrid_pred = cm->reference_mode == REFERENCE_MODE_SELECT;
       if (use_hybrid_pred)
@@ -5210,7 +5210,7 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
     }
 #endif
     if (cm->reference_mode != SINGLE_REFERENCE) {
-#if CONFIG_EXT_COMP_REFS
+#if 0//CONFIG_EXT_COMP_REFS
       for (i = 0; i < COMP_REF_TYPE_CONTEXTS; i++)
         av1_cond_prob_diff_update(header_bc, &fc->comp_ref_type_prob[i],
                                   counts->comp_ref_type[i], probwt);
@@ -5221,7 +5221,7 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
                                     counts->uni_comp_ref[i][j], probwt);
 #endif  // CONFIG_EXT_COMP_REFS
 
-#if !CONFIG_NEW_MULTISYMBOL
+#if 0//!CONFIG_NEW_MULTISYMBOL
       for (i = 0; i < REF_CONTEXTS; i++) {
 #if CONFIG_EXT_REFS
         for (j = 0; j < (FWD_REFS - 1); j++) {
@@ -5242,31 +5242,31 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
 #endif  // CONFIG_NEW_MULTISYMBOL
     }
 
-#if CONFIG_EXT_INTER && CONFIG_COMPOUND_SINGLEREF
+#if 0//CONFIG_EXT_INTER && CONFIG_COMPOUND_SINGLEREF
     for (i = 0; i < COMP_INTER_MODE_CONTEXTS; i++)
       av1_cond_prob_diff_update(header_bc, &fc->comp_inter_mode_prob[i],
                                 counts->comp_inter_mode[i], probwt);
 #endif  // CONFIG_EXT_INTER && CONFIG_COMPOUND_SINGLEREF
 
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
     for (i = 0; i < BLOCK_SIZE_GROUPS; ++i) {
       prob_diff_update(av1_intra_mode_tree, cm->fc->y_mode_prob[i],
                        counts->y_mode[i], INTRA_MODES, probwt, header_bc);
     }
 #endif
 
-    av1_write_nmv_probs(cm, cm->allow_high_precision_mv, header_bc, counts->mv);
-#if !CONFIG_EC_ADAPT
+//    av1_write_nmv_probs(cm, cm->allow_high_precision_mv, header_bc, counts->mv);
+#if 0//!CONFIG_EC_ADAPT
     update_ext_tx_probs(cm, header_bc);
 #endif
-#if CONFIG_SUPERTX
+#if 0//CONFIG_SUPERTX
     if (!xd->lossless[0]) update_supertx_probs(cm, probwt, header_bc);
 #endif  // CONFIG_SUPERTX
 #if CONFIG_GLOBAL_MOTION
     write_global_motion(cpi, header_bc);
 #endif  // CONFIG_GLOBAL_MOTION
   }
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
   av1_coef_head_cdfs(fc);
   av1_coef_pareto_cdfs(fc);
   for (i = 0; i < NMV_CONTEXTS; ++i) av1_set_mv_cdfs(&fc->nmvc[i]);

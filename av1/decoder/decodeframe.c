@@ -4999,34 +4999,34 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
   }
 #endif
 
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
   if (cm->tx_mode == TX_MODE_SELECT) read_tx_size_probs(fc, &r);
 #endif
-#if CONFIG_EXT_TX && CONFIG_RECT_TX && CONFIG_RECT_TX_EXT
+#if 0//CONFIG_EXT_TX && CONFIG_RECT_TX && CONFIG_RECT_TX_EXT
   if (cm->tx_mode == TX_MODE_SELECT)
     av1_diff_update_prob(&r, &fc->quarter_tx_size_prob, ACCT_STR);
 #endif  // CONFIG_EXT_TX && CONFIG_RECT_TX && CONFIG_RECT_TX_EXT
 
-#if CONFIG_LV_MAP
+#if 0//CONFIG_LV_MAP
   av1_read_txb_probs(fc, cm->tx_mode, &r);
 #else  // CONFIG_LV_MAP
 #if !CONFIG_PVQ
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
   read_coef_probs(fc, cm->tx_mode, &r);
 #endif  // !CONFIG_EC_ADAPT
 #endif  // !CONFIG_PVQ
 #endif  // CONFIG_LV_MAP
 
-#if CONFIG_VAR_TX
+#if 0//CONFIG_VAR_TX
   for (i = 0; i < TXFM_PARTITION_CONTEXTS; ++i)
     av1_diff_update_prob(&r, &fc->txfm_partition_prob[i], ACCT_STR);
 #endif  // CONFIG_VAR_TX
-#if !CONFIG_NEW_MULTISYMBOL
+#if 0//!CONFIG_NEW_MULTISYMBOL
   for (i = 0; i < SKIP_CONTEXTS; ++i)
     av1_diff_update_prob(&r, &fc->skip_probs[i], ACCT_STR);
 #endif
 
-#if CONFIG_DELTA_Q && !CONFIG_EC_ADAPT
+#if 0//CONFIG_DELTA_Q && !CONFIG_EC_ADAPT
 #if CONFIG_EXT_DELTA_Q
   if (cm->delta_q_present_flag) {
     for (i = 0; i < DELTA_Q_PROBS; ++i)
@@ -5042,7 +5042,7 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
 #endif
 #endif
 
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
   if (cm->seg.enabled && cm->seg.update_map) {
     if (cm->seg.temporal_update) {
       for (i = 0; i < PREDICTION_PROBS; i++)
@@ -5089,24 +5089,24 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
     av1_copy(cm->kf_y_prob, av1_kf_y_mode_prob);
 #endif
     av1_copy(cm->fc->kf_y_cdf, av1_kf_y_mode_cdf);
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
     int k;
     for (k = 0; k < INTRA_MODES; k++)
       for (j = 0; j < INTRA_MODES; j++)
         for (i = 0; i < INTRA_MODES - 1; ++i)
           av1_diff_update_prob(&r, &cm->kf_y_prob[k][j][i], ACCT_STR);
 #endif
-#if CONFIG_INTRABC
+#if 0//CONFIG_INTRABC
     if (cm->allow_screen_content_tools) {
       av1_diff_update_prob(&r, &fc->intrabc_prob, ACCT_STR);
     }
 #endif
   } else {
-#if !CONFIG_NEW_MULTISYMBOL
+#if 0//!CONFIG_NEW_MULTISYMBOL
     read_inter_mode_probs(fc, &r);
 #endif
 
-#if CONFIG_EXT_INTER
+#if 0//CONFIG_EXT_INTER
 #if !CONFIG_EC_ADAPT
     read_inter_compound_mode_probs(fc, &r);
 #endif
@@ -5156,24 +5156,24 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
 #endif  // !CONFIG_EC_ADAPT && (CONFIG_COMPOUND_SEGMENT || CONFIG_WEDGE)
 #endif  // CONFIG_EXT_INTER
 
-#if CONFIG_MOTION_VAR || CONFIG_WARPED_MOTION
+#if 0//CONFIG_MOTION_VAR || CONFIG_WARPED_MOTION
     for (i = BLOCK_8X8; i < BLOCK_SIZES; ++i) {
       for (j = 0; j < MOTION_MODES - 1; ++j)
         av1_diff_update_prob(&r, &fc->motion_mode_prob[i][j], ACCT_STR);
     }
 #endif  // CONFIG_MOTION_VAR || CONFIG_WARPED_MOTION
 
-#if CONFIG_NCOBMC_ADAPT_WEIGHT && CONFIG_MOTION_VAR
+#if 0//CONFIG_NCOBMC_ADAPT_WEIGHT && CONFIG_MOTION_VAR
     for (i = 0; i < ADAPT_OVERLAP_BLOCKS; ++i) {
       for (j = 0; j < MAX_NCOBMC_MODES - 1; ++j)
         av1_diff_update_prob(&r, &fc->ncobmc_mode_prob[i][j], ACCT_STR);
     }
 #endif
 
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
     if (cm->interp_filter == SWITCHABLE) read_switchable_interp_probs(fc, &r);
 #endif
-#if !CONFIG_NEW_MULTISYMBOL
+#if 0//!CONFIG_NEW_MULTISYMBOL
     for (i = 0; i < INTRA_INTER_CONTEXTS; i++)
       av1_diff_update_prob(&r, &fc->intra_inter_prob[i], ACCT_STR);
 #endif
@@ -5182,12 +5182,12 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
       setup_compound_reference_mode(cm);
     read_frame_reference_mode_probs(cm, &r);
 
-#if CONFIG_EXT_INTER && CONFIG_COMPOUND_SINGLEREF
+#if 0//CONFIG_EXT_INTER && CONFIG_COMPOUND_SINGLEREF
     for (i = 0; i < COMP_INTER_MODE_CONTEXTS; i++)
       av1_diff_update_prob(&r, &fc->comp_inter_mode_prob[i], ACCT_STR);
 #endif  // CONFIG_EXT_INTER && CONFIG_COMPOUND_SINGLEREF
 
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
     for (j = 0; j < BLOCK_SIZE_GROUPS; j++) {
       for (i = 0; i < INTRA_MODES - 1; ++i)
         av1_diff_update_prob(&r, &fc->y_mode_prob[j][i], ACCT_STR);
@@ -5196,17 +5196,17 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
 
     for (i = 0; i < NMV_CONTEXTS; ++i)
       read_mv_probs(&fc->nmvc[i], cm->allow_high_precision_mv, &r);
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
     read_ext_tx_probs(fc, &r);
 #endif  // EC_ADAPT
-#if CONFIG_SUPERTX
+#if 0//CONFIG_SUPERTX
     if (!xd->lossless[0]) read_supertx_probs(fc, &r);
 #endif
 #if CONFIG_GLOBAL_MOTION
     read_global_motion(cm, &r);
 #endif
   }
-#if !CONFIG_EC_ADAPT
+#if 0//!CONFIG_EC_ADAPT
   av1_coef_head_cdfs(fc);
   /* Make tail distribution from head */
   av1_coef_pareto_cdfs(fc);
