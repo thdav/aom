@@ -140,6 +140,8 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
   const int16_t *const scan = scan_order->scan;
   const int16_t *const nb = scan_order->neighbors;
   const int shift = av1_get_tx_scale(tx_size);
+
+  return eob;
 #if CONFIG_AOM_QM
   int seg_id = xd->mi[0]->mbmi.segment_id;
   // Use a flat matrix (i.e. no weighting) for 1D and Identity transforms
