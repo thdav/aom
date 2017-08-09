@@ -5851,8 +5851,8 @@ void av1_model_to_full_probs(const aom_prob *model, aom_prob *full) {
 static void build_tail_cdfs(aom_cdf_prob cdf_tail[CDF_SIZE(ENTROPY_TOKENS)],
                             aom_cdf_prob cdf_head[CDF_SIZE(ENTROPY_TOKENS)],
                             int band_zero) {
-  int probNZ, prob1, prob_idx, i;
-  int phead[HEAD_TOKENS + 1], sum;
+  int prob_idx, i;
+  int phead[HEAD_TOKENS + 1];
   const int is_dc = !!band_zero;
   aom_cdf_prob prev_cdf;
   prev_cdf = 0;
@@ -5861,11 +5861,10 @@ static void build_tail_cdfs(aom_cdf_prob cdf_tail[CDF_SIZE(ENTROPY_TOKENS)],
     prev_cdf = AOM_ICDF(cdf_head[i]);
   }
   // Do the tail
-  probNZ = CDF_PROB_TOP - phead[ZERO_TOKEN + is_dc] - (is_dc ? phead[0] : 0);
-  prob1 = phead[is_dc + ONE_TOKEN_EOB] + phead[is_dc + ONE_TOKEN_NEOB];
-  prob_idx =
-      AOMMIN(COEFF_PROB_MODELS - 1, AOMMAX(0, ((256 * prob1) / probNZ) - 1));
+  prob_idx = ((COEFF_PROB_MODELS-1) * (phead[ZERO_TOKEN + is_dc] + phead[is_dc + ONE_TOKEN_EOB] + phead[is_dc + ONE_TOKEN_NEOB])) / CDF_PROB_TOP;
 
+  prob_idx =
+      AOMMIN(COEFF_PROB_MODELS - 1, AOMMAX(0, prob_idx));
   memcpy(cdf_tail, av1_pareto8_tail_cdf[prob_idx],
          CDF_SIZE(TAIL_TOKENS) * sizeof(aom_cdf_prob));
 }
