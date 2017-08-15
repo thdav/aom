@@ -3960,11 +3960,15 @@ static uint32_t write_tiles(AV1_COMP *const cpi, uint8_t *const dst,
 
     /* Write a placeholder for the compressed header length */
     comp_hdr_len_wb = wb;
+#if !CONFIG_NEW_MULTISYMBOL || CONFIG_GLOBAL_MOTION || CONFIG_LOOP_RESTORATION
     aom_wb_write_literal(&wb, 0, 16);
+#endif
 
     uncompressed_hdr_size = aom_wb_bytes_written(&wb);
     comp_hdr_size = write_compressed_header(cpi, dst + uncompressed_hdr_size);
+#if !CONFIG_NEW_MULTISYMBOL || CONFIG_GLOBAL_MOTION || CONFIG_LOOP_RESTORATION
     aom_wb_overwrite_literal(&comp_hdr_len_wb, (int)(comp_hdr_size), 16);
+#endif
     hdr_size = uncompressed_hdr_size + comp_hdr_size;
     total_size += hdr_size;
 
@@ -4653,6 +4657,12 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
   FRAME_COUNTS *counts = cpi->td.counts;
   int j;
 #endif
+  if (frame_is_intra_only(cm))
+    av1_copy(cm->fc->kf_y_cdf, av1_kf_y_mode_cdf);
+
+#if CONFIG_NEW_MULTISYMBOL && !CONFIG_GLOBAL_MOTION && !CONFIG_LOOP_RESTORATION
+  return 0;
+#endif
 
   const int probwt = cm->num_tg;
   (void)probwt;
@@ -4690,7 +4700,6 @@ static uint32_t write_compressed_header(AV1_COMP *cpi, uint8_t *data) {
 #endif
 
   if (frame_is_intra_only(cm)) {
-    av1_copy(cm->fc->kf_y_cdf, av1_kf_y_mode_cdf);
 
 #if CONFIG_INTRABC
     if (cm->allow_screen_content_tools) {
@@ -5007,7 +5016,9 @@ void av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size) {
       aom_wb_write_literal(&wb, 0, 2);
     }
     // Size of compressed header
+#if !CONFIG_NEW_MULTISYMBOL || CONFIG_GLOBAL_MOTION || CONFIG_LOOP_RESTORATION
     aom_wb_write_literal(&wb, 0, 16);
+#endif
 
     uncompressed_header_size = (uint32_t)aom_wb_bytes_written(&wb);
     data += uncompressed_header_size;
@@ -5045,8 +5056,10 @@ void av1_pack_bitstream(AV1_COMP *const cpi, uint8_t *dst, size_t *size) {
       aom_wb_write_literal(&saved_wb, tile_size_bytes - 1, 2);
     }
     // TODO(jbb): Figure out what to do if compressed_header_size > 16 bits.
+#if !CONFIG_NEW_MULTISYMBOL || CONFIG_GLOBAL_MOTION || CONFIG_LOOP_RESTORATION
     assert(compressed_header_size <= 0xffff);
     aom_wb_write_literal(&saved_wb, compressed_header_size, 16);
+#endif
   } else {
 #endif  // CONFIG_EXT_TILE
     data += data_size;

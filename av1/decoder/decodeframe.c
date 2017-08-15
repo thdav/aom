@@ -4855,11 +4855,15 @@ static size_t read_uncompressed_header(AV1Decoder *pbi,
 #endif  // CONFIG_EXT_TX
 
   read_tile_info(pbi, rb);
-  sz = aom_rb_read_literal(rb, 16);
 
+#if !CONFIG_NEW_MULTISYMBOL || CONFIG_GLOBAL_MOTION || CONFIG_LOOP_RESTORATION
+  sz = aom_rb_read_literal(rb, 16);
   if (sz == 0)
     aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                        "Invalid header size");
+#else
+  return 0;
+#endif
   return sz;
 }
 
@@ -5001,6 +5005,15 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
   FRAME_CONTEXT *const fc = cm->fc;
   int i;
 #endif
+  if (frame_is_intra_only(cm)) {
+    av1_copy(cm->fc->kf_y_cdf, av1_kf_y_mode_cdf);
+  }else {
+    if (cm->reference_mode != SINGLE_REFERENCE)
+      setup_compound_reference_mode(cm);
+  }
+#if CONFIG_NEW_MULTISYMBOL && !CONFIG_GLOBAL_MOTION && !CONFIG_LOOP_RESTORATION
+  return 0;
+#endif
 
 #if CONFIG_ANS && ANS_MAX_SYMBOLS
   r.window_size = 1 << cm->ans_window_size_log2;
@@ -5009,7 +5022,6 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
                       pbi->decrypt_state))
     aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
                        "Failed to allocate bool decoder 0");
-
 #if CONFIG_LOOP_RESTORATION
   if (cm->rst_info[0].frame_restoration_type != RESTORE_NONE ||
       cm->rst_info[1].frame_restoration_type != RESTORE_NONE ||
@@ -5038,7 +5050,6 @@ static int read_compressed_header(AV1Decoder *pbi, const uint8_t *data,
 #endif
 
   if (frame_is_intra_only(cm)) {
-    av1_copy(cm->fc->kf_y_cdf, av1_kf_y_mode_cdf);
 #if CONFIG_INTRABC
     if (cm->allow_screen_content_tools) {
       av1_diff_update_prob(&r, &fc->intrabc_prob, ACCT_STR);
@@ -5329,16 +5340,20 @@ void av1_decode_frame(AV1Decoder *pbi, const uint8_t *data,
   xd->global_motion = cm->global_motion;
 #endif  // CONFIG_GLOBAL_MOTION
 
+#if !CONFIG_NEW_MULTISYMBOL || CONFIG_GLOBAL_MOTION || CONFIG_LOOP_RESTORATION
   if (!first_partition_size) {
     // showing a frame directly
     *p_data_end = data + aom_rb_bytes_read(&rb);
     return;
   }
+#endif
 
   data += aom_rb_bytes_read(&rb);
+#if !CONFIG_NEW_MULTISYMBOL || CONFIG_GLOBAL_MOTION || CONFIG_LOOP_RESTORATION
   if (!read_is_valid(data, first_partition_size, data_end))
     aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                        "Truncated packet or corrupt header length");
+#endif
 
   cm->setup_mi(cm);
 
