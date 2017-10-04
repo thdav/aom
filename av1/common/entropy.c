@@ -3137,6 +3137,7 @@ void av1_average_tile_coef_cdfs(FRAME_CONTEXT *fc, FRAME_CONTEXT *ec_ctxs[],
   AVERAGE_TILE_CDFS(coef_tail_cdfs)
 #if CONFIG_COEFF_CTX_REDUCE
   AVERAGE_TILE_CDFS(blockz_cdfs)
+#else
 #endif
 #endif
 }
