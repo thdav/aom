@@ -316,8 +316,12 @@ static INLINE void add_token(TOKENEXTRA **t,
   (*t)->first_val = first_val;
   (*t)++;
 
-  if (token == BLOCK_Z_TOKEN) {
+  if (token == BLOCK_Z_TOKEN || token == BLOCK_NZ_TOKEN) {
+#if CONFIG_COEFF_CTX_REDUCE
+    update_cdf(*head_cdf, token != BLOCK_Z_TOKEN, 2);
+#else
     update_cdf(*head_cdf, 0, HEAD_TOKENS + 1);
+#endif
   } else {
     if (eob_val != LAST_EOB) {
       const int symb = 2 * AOMMIN(token, TWO_TOKEN) - eob_val + first_val;
@@ -520,6 +524,11 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
   const SCAN_ORDER *const scan_order = get_scan(cm, tx_size, tx_type, mbmi);
   const int ref = is_inter_block(mbmi);
   FRAME_CONTEXT *ec_ctx = xd->tile_ctx;
+#if CONFIG_COEFF_CTX_REDUCE
+  aom_cdf_prob(
+      *const blockz_cdfs)[CDF_SIZE(ENTROPY_TOKENS)] =
+      ec_ctx->blockz_cdfs[txsize_sqr_map[tx_size]][type][ref];
+#endif
   aom_cdf_prob(
       *const coef_head_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
       ec_ctx->coef_head_cdfs[txsize_sqr_map[tx_size]][type][ref];
@@ -527,7 +536,6 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
       *const coef_tail_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
       ec_ctx->coef_tail_cdfs[txsize_sqr_map[tx_size]][type][ref];
   int eob_val;
-  int first_val = 1;
   const int seg_eob = av1_get_tx_eob(&cpi->common.seg, segment_id, tx_size);
   const uint8_t *const band = get_band_translate(tx_size);
   int16_t token;
@@ -544,24 +552,38 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
     av1_tokenize_color_map(x, plane, block, &t, plane_bsize, tx_size, MRC_MAP);
 #endif  // CONFIG_MRC_TX && SIGNAL_ANY_MRC_MASK
 
+#if CONFIG_COEFF_CTX_REDUCE
+  add_token(&t, &coef_tail_cdfs[band[c]][pt], &blockz_cdfs[pt], eob == 0,
+              1, 0, eob == 0 ? BLOCK_Z_TOKEN : BLOCK_NZ_TOKEN);
+#else
   if (eob == 0)
     add_token(&t, &coef_tail_cdfs[band[c]][pt], &coef_head_cdfs[band[c]][pt], 1,
               1, 0, BLOCK_Z_TOKEN);
+#endif
 
   while (c < eob) {
     int v = qcoeff[scan[c]];
-    first_val = (c == 0);
 
     if (!v) {
+#if CONFIG_COEFF_CTX_REDUCE
       add_token(&t, &coef_tail_cdfs[band[c]][pt], &coef_head_cdfs[band[c]][pt],
-                0, first_val, 0, ZERO_TOKEN);
+                0, 0, 0, ZERO_TOKEN);
+#else
+      add_token(&t, &coef_tail_cdfs[band[c]][pt], &coef_head_cdfs[band[c]][pt],
+                0, !c, 0, ZERO_TOKEN);
+#endif
       token_cache[scan[c]] = 0;
     } else {
       eob_val =
           (c + 1 == eob) ? (c + 1 == seg_eob ? LAST_EOB : EARLY_EOB) : NO_EOB;
       av1_get_token_extra(v, &token, &extra);
+#if CONFIG_COEFF_CTX_REDUCE
       add_token(&t, &coef_tail_cdfs[band[c]][pt], &coef_head_cdfs[band[c]][pt],
-                eob_val, first_val, extra, (uint8_t)token);
+                eob_val, 0, extra, (uint8_t)token);
+#else
+      add_token(&t, &coef_tail_cdfs[band[c]][pt], &coef_head_cdfs[band[c]][pt],
+                eob_val, !c, extra, (uint8_t)token);
+#endif
       token_cache[scan[c]] = av1_pt_energy_class[token];
     }
     ++c;

@@ -671,6 +671,23 @@ void av1_fill_token_costs_from_cdf(av1_coeff_cost *cost,
   }
 }
 
+#if CONFIG_COEFF_CTX_REDUCE
+void av1_fill_blockz_costs_from_cdf(av1_blockz_cost *cost,
+                                   blockz_cdf_model (*cdf)[PLANE_TYPES]) {
+  for (int tx = 0; tx < TX_SIZES; ++tx) {
+    for (int pt = 0; pt < PLANE_TYPES; ++pt) {
+      for (int rt = 0; rt < REF_TYPES; ++rt) {
+          for (int ctx = 0; ctx < COEFF_CONTEXTS0; ++ctx) {
+            av1_cost_tokens_from_cdf(cost[tx][pt][rt][ctx],// FIXME
+                                     cdf[tx][pt][rt][ctx], NULL);
+          }
+      }
+    }
+  }
+}
+#endif
+
+
 void av1_initialize_rd_consts(AV1_COMP *cpi) {
   AV1_COMMON *const cm = &cpi->common;
   MACROBLOCK *const x = &cpi->td.mb;

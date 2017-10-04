@@ -156,6 +156,10 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
   int16_t t0, t1;
   int i, final_eob = 0;
   const int cat6_bits = av1_get_cat6_extrabits_size(tx_size, xd->bd);
+#if CONFIG_COEFF_CTX_REDUCE
+  int(*blockz_costs)[2] =
+      mb->blockz_costs[txsize_sqr_map[tx_size]][plane_type][ref];
+#endif
   int(*head_token_costs)[COEFF_CONTEXTS][TAIL_TOKENS] =
       mb->token_head_costs[txsize_sqr_map[tx_size]][plane_type][ref];
   int(*tail_token_costs)[COEFF_CONTEXTS][TAIL_TOKENS] =
@@ -177,7 +181,11 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
   // Initialized to the worst possible error for the largest transform size.
   // This ensures that it never goes negative.
   int64_t accu_error = ((int64_t)1) << 50;
+#if CONFIG_COEFF_CTX_REDUCE
+  rate0 = blockz_costs[ctx][0] - blockz_costs[ctx][1];
+#else
   rate0 = head_token_costs[0][ctx][0];
+#endif
   int64_t best_block_rd_cost = RDCOST(rdmult, rate0, accu_error);
 
   // int64_t best_block_rd_cost_all0 = best_block_rd_cost;
@@ -191,13 +199,21 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
     const int ctx_cur = (i == 0) ? ctx : get_coef_context(nb, token_cache, i);
     const int eob_val =
         (i + 1 == eob) ? (i + 1 == seg_eob ? LAST_EOB : EARLY_EOB) : NO_EOB;
+#if CONFIG_COEFF_CTX_REDUCE
+    const int is_first = 0;
+#else
     const int is_first = (i == 0);
+#endif
 
     if (x == 0) {
       // no need to search when x == 0
       accu_rate += av1_get_coeff_token_cost(
           ZERO_TOKEN, eob_val, is_first, head_token_costs[band_cur][ctx_cur],
           tail_token_costs[band_cur][ctx_cur]);
+#if CONFIG_COEFF_CTX_REDUCE
+//      if (i==0)
+//        accu_rate += blockz_costs[ctx][1];
+#endif
       // accu_error does not change when x==0
     } else {
       /*  Computing distortion
@@ -266,6 +282,9 @@ static int optimize_b_greedy(const AV1_COMMON *cm, MACROBLOCK *mb, int plane,
       int64_t base_bits;
       // rate cost of x
       base_bits = av1_get_token_cost(x, &t0, cat6_bits);
+#if CONFIG_COEFF_CTX_REDUCE
+//      base_bits += blockz_costs[ctx][1];
+#endif
       rate0 = base_bits +
               av1_get_coeff_token_cost(t0, eob_val, is_first,
                                        head_token_costs[band_cur][ctx_cur],

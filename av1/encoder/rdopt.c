@@ -1448,6 +1448,9 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
   const int16_t *scan = scan_order->scan;
   const int16_t *nb = scan_order->neighbors;
   const int ref = is_inter_block(mbmi);
+#if CONFIG_COEFF_CTX_REDUCE
+  int (*blockz_costs)[2] = x->blockz_costs[tx_size_ctx][type][ref];
+#endif
   int(*head_token_costs)[COEFF_CONTEXTS][TAIL_TOKENS] =
       x->token_head_costs[tx_size_ctx][type][ref];
   int(*tail_token_costs)[COEFF_CONTEXTS][TAIL_TOKENS] =
@@ -1469,7 +1472,11 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
 
   if (eob == 0) {
     // block zero
+#if CONFIG_COEFF_CTX_REDUCE
+    cost = blockz_costs[pt][0];
+#else
     cost = (*head_token_costs)[pt][0];
+#endif
   } else {
     if (use_fast_coef_costing) {
       int band_left = *band_count++;
@@ -1478,9 +1485,12 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
       int v = qcoeff[0];
       int16_t prev_t;
       cost = av1_get_token_cost(v, &prev_t, cat6_bits);
+#if CONFIG_COEFF_CTX_REDUCE
+      cost += blockz_costs[pt][1];
+#endif
       eob_val = (eob == 1) ? EARLY_EOB : NO_EOB;
       cost += av1_get_coeff_token_cost(
-          prev_t, eob_val, 1, (*head_token_costs)[pt], (*tail_token_costs)[pt]);
+          prev_t, eob_val, !CONFIG_COEFF_CTX_REDUCE, (*head_token_costs)[pt], (*tail_token_costs)[pt]);
 
       token_cache[0] = av1_pt_energy_class[prev_t];
       ++head_token_costs;
@@ -1512,8 +1522,11 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
       int v = qcoeff[0];
       int16_t tok;
       cost = av1_get_token_cost(v, &tok, cat6_bits);
+#if CONFIG_COEFF_CTX_REDUCE
+      cost += blockz_costs[pt][1];
+#endif
       eob_val = (eob == 1) ? EARLY_EOB : NO_EOB;
-      cost += av1_get_coeff_token_cost(tok, eob_val, 1, (*head_token_costs)[pt],
+      cost += av1_get_coeff_token_cost(tok, eob_val, !CONFIG_COEFF_CTX_REDUCE, (*head_token_costs)[pt],
                                        (*tail_token_costs)[pt]);
 
       token_cache[0] = av1_pt_energy_class[tok];

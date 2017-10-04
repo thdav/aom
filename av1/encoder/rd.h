@@ -576,7 +576,10 @@ void av1_fill_coeff_costs(MACROBLOCK *x, FRAME_CONTEXT *fc);
 
 void av1_fill_token_costs_from_cdf(av1_coeff_cost *cost,
                                    coeff_cdf_model (*cdf)[PLANE_TYPES]);
-
+#if CONFIG_COEFF_CTX_REDUCE
+void av1_fill_blockz_costs_from_cdf(av1_blockz_cost *cost,
+                                   blockz_cdf_model (*cdf)[PLANE_TYPES]);
+#endif
 #ifdef __cplusplus
 }  // extern "C"
 #endif

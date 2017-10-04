@@ -141,6 +141,10 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
   (void)tx_type;
   int band, c = 0;
   const int tx_size_ctx = txsize_sqr_map[tx_size];
+#if CONFIG_COEFF_CTX_REDUCE
+  aom_cdf_prob(*blockz_cdfs)[CDF_SIZE(ENTROPY_TOKENS)] =
+      ec_ctx->blockz_cdfs[tx_size_ctx][type][ref];
+#endif
   aom_cdf_prob(*coef_head_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
       ec_ctx->coef_head_cdfs[tx_size_ctx][type][ref];
   aom_cdf_prob(*coef_tail_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
@@ -164,20 +168,33 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
   while (more_data) {
     int comb_token;
     int last_pos = (c + 1 == max_eob);
-    int first_pos = (c == 0);
 
 #if CONFIG_NEW_QUANT
     dqv_val = &dq_val[band][0];
 #endif  // CONFIG_NEW_QUANT
 
+#if CONFIG_COEFF_CTX_REDUCE
+    const int first_pos = 0;
+    if (c==0)
+    {
+      int block_nz = av1_read_record_symbol(xd->counts, r, blockz_cdfs[ctx], 2, ACCT_STR);
+      if (!block_nz)
+        return 0;
+    }
+#else
+    int first_pos = (c == 0);
+#endif
+
     comb_token = last_pos ? 2 * av1_read_record_bit(xd->counts, r, ACCT_STR) + 2
-                          : av1_read_record_symbol(
-                                xd->counts, r, coef_head_cdfs[band][ctx],
-                                HEAD_TOKENS + first_pos, ACCT_STR) +
-                                !first_pos;
+      : av1_read_record_symbol( xd->counts, r, coef_head_cdfs[band][ctx],
+          HEAD_TOKENS + first_pos, ACCT_STR) + !first_pos;
+
+#if !CONFIG_COEFF_CTX_REDUCE
     if (first_pos) {
       if (comb_token == 0) return 0;
     }
+#endif
+
     token = comb_token >> 1;
 
     while (!token) {
@@ -204,9 +221,10 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
 
     more_data = comb_token & 1;
 
-    if (token > ONE_TOKEN)
+    if (token > ONE_TOKEN) {
       token += av1_read_record_symbol(xd->counts, r, coef_tail_cdfs[band][ctx],
                                       TAIL_TOKENS, ACCT_STR);
+    }
 #if CONFIG_NEW_QUANT
     dqv_val = &dq_val[band][0];
 #endif  // CONFIG_NEW_QUANT

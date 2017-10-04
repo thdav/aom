@@ -47,6 +47,7 @@ extern "C" {
 #define NO_EOB 0            // Not an end-of-block
 #define EARLY_EOB 1         // End of block before the last position
 #define LAST_EOB 2          // End of block in the last position (implicit)
+#define BLOCK_NZ_TOKEN 254  // block non-zero
 #define BLOCK_Z_TOKEN 255   // block zero
 #define HEAD_TOKENS 5
 #define TAIL_TOKENS 9
@@ -253,6 +254,9 @@ extern const aom_prob av1_pareto8_full[COEFF_PROB_MODELS][MODEL_NODES];
 
 typedef aom_cdf_prob coeff_cdf_model[REF_TYPES][COEF_BANDS][COEFF_CONTEXTS]
                                     [CDF_SIZE(ENTROPY_TOKENS)];
+#if 1//CONFIG_COEFF_CTX_REDUCE
+typedef aom_cdf_prob blockz_cdf_model[REF_TYPES][COEFF_CONTEXTS0][CDF_SIZE(ENTROPY_TOKENS)];
+#endif
 extern const aom_cdf_prob av1_pareto8_token_probs[COEFF_PROB_MODELS]
                                                  [ENTROPY_TOKENS - 2];
 extern const aom_cdf_prob av1_pareto8_tail_probs[COEFF_PROB_MODELS]

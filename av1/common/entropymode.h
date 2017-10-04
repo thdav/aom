@@ -92,6 +92,9 @@ typedef struct frame_contexts {
 #endif
   coeff_cdf_model coef_tail_cdfs[TX_SIZES][PLANE_TYPES];
   coeff_cdf_model coef_head_cdfs[TX_SIZES][PLANE_TYPES];
+#if CONFIG_COEFF_CTX_REDUCE
+  blockz_cdf_model blockz_cdfs[TX_SIZES][PLANE_TYPES];
+#endif
 #if CONFIG_ADAPT_SCAN
 // TODO(angiebird): try aom_prob
 #if CONFIG_CHROMA_2X2

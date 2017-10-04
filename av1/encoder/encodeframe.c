@@ -4632,6 +4632,10 @@ static void encode_rd_sb_row(AV1_COMP *cpi, ThreadData *td,
                                   x->e_mbd.tile_ctx->coef_head_cdfs);
     av1_fill_token_costs_from_cdf(x->token_tail_costs,
                                   x->e_mbd.tile_ctx->coef_tail_cdfs);
+#if CONFIG_COEFF_CTX_REDUCE
+    av1_fill_blockz_costs_from_cdf(x->blockz_costs,
+                                   x->e_mbd.tile_ctx->blockz_cdfs);
+#endif
 #endif
     av1_fill_mode_rates(cm, x, xd->tile_ctx);
 

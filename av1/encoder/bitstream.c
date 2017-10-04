@@ -649,6 +649,12 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
   const int seg_eob = tx_size_2d[tx_size];
 #endif
 
+#if CONFIG_COEFF_CTX_REDUCE
+  const int blockz_size = 2;
+#else
+  const int blockz_size = HEAD_TOKENS + 1;
+#endif
+
 #if CONFIG_MRC_TX && SIGNAL_ANY_MRC_MASK
   if (tx_type == MRC_DCT && ((is_inter && SIGNAL_MRC_MASK_INTER) ||
                              (!is_inter && SIGNAL_MRC_MASK_INTRA))) {
@@ -664,13 +670,20 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
     const int token = p->token;
     const int eob_val = p->eob_val;
     if (token == BLOCK_Z_TOKEN) {
-      aom_write_symbol(w, 0, *p->head_cdf, HEAD_TOKENS + 1);
+      aom_write_symbol(w, 0, *p->head_cdf, blockz_size);
       p++;
 #if CONFIG_VAR_TX
       break;
 #endif
       continue;
     }
+#if CONFIG_COEFF_CTX_REDUCE
+    if (token == BLOCK_NZ_TOKEN) {
+      aom_write_symbol(w, 1, *p->head_cdf, blockz_size);
+      p++;
+      continue;
+    }
+#endif
 
     const av1_extra_bit *const extra_bits = &av1_extra_bits[token];
     if (eob_val == LAST_EOB) {
@@ -704,7 +717,6 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
         write_coeff_extra(extra_bits->prob, bit_string >> 1, bit_string_length,
                           skip_bits, w, token_stats);
 #endif
-
       aom_write_bit_record(w, bit_string & 1, token_stats);
     }
     ++p;
