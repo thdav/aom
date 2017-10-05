@@ -1490,7 +1490,7 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
 #endif
       eob_val = (eob == 1) ? EARLY_EOB : NO_EOB;
       cost += av1_get_coeff_token_cost(
-          prev_t, eob_val, !CONFIG_COEFF_CTX_REDUCE, (*head_token_costs)[pt], (*tail_token_costs)[0]);
+          prev_t, eob_val, !CONFIG_COEFF_CTX_REDUCE, (*head_token_costs)[pt], (*tail_token_costs)[2]);
 
       token_cache[0] = av1_pt_energy_class[prev_t];
       ++head_token_costs;
@@ -1507,7 +1507,7 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
             (c + 1 == eob) ? (c + 1 == seg_eob ? LAST_EOB : EARLY_EOB) : NO_EOB;
         cost += av1_get_coeff_token_cost(t, eob_val, 0,
                                          (*head_token_costs)[!prev_t],
-                                         (*tail_token_costs)[0]);
+                                         (*tail_token_costs)[2]);
         prev_t = t;
         if (!--band_left) {
           band_left = *band_count++;
@@ -1527,7 +1527,7 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
 #endif
       eob_val = (eob == 1) ? EARLY_EOB : NO_EOB;
       cost += av1_get_coeff_token_cost(tok, eob_val, !CONFIG_COEFF_CTX_REDUCE, (*head_token_costs)[pt],
-                                       (*tail_token_costs)[0]);
+                                       (*tail_token_costs)[2]);
 
       token_cache[0] = av1_pt_energy_class[tok];
       ++head_token_costs;
@@ -1543,7 +1543,7 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
         eob_val =
             (c + 1 == eob) ? (c + 1 == seg_eob ? LAST_EOB : EARLY_EOB) : NO_EOB;
         cost += av1_get_coeff_token_cost(
-            tok, eob_val, 0, (*head_token_costs)[pt], (*tail_token_costs)[0]);
+            tok, eob_val, 0, (*head_token_costs)[pt], (*tail_token_costs)[2]);
         token_cache[rc] = av1_pt_energy_class[tok];
         if (!--band_left) {
           band_left = *band_count++;

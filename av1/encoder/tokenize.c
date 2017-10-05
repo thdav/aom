@@ -553,11 +553,11 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
 #endif  // CONFIG_MRC_TX && SIGNAL_ANY_MRC_MASK
 
 #if CONFIG_COEFF_CTX_REDUCE
-  add_token(&t, &coef_tail_cdfs[band[c]][0], &blockz_cdfs[pt], eob == 0,
+  add_token(&t, &coef_tail_cdfs[band[c]][2], &blockz_cdfs[pt], eob == 0,
               1, 0, eob == 0 ? BLOCK_Z_TOKEN : BLOCK_NZ_TOKEN);
 #else
   if (eob == 0)
-    add_token(&t, &coef_tail_cdfs[band[c]][0], &coef_head_cdfs[band[c]][pt], 1,
+    add_token(&t, &coef_tail_cdfs[band[c]][pt], &coef_head_cdfs[band[c]][pt], 1,
               1, 0, BLOCK_Z_TOKEN);
 #endif
 
@@ -566,10 +566,10 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
 
     if (!v) {
 #if CONFIG_COEFF_CTX_REDUCE
-      add_token(&t, &coef_tail_cdfs[band[c]][0], &coef_head_cdfs[band[c]][pt],
+      add_token(&t, &coef_tail_cdfs[band[c]][2], &coef_head_cdfs[band[c]][pt],
                 0, 0, 0, ZERO_TOKEN);
 #else
-      add_token(&t, &coef_tail_cdfs[band[c]][0], &coef_head_cdfs[band[c]][pt],
+      add_token(&t, &coef_tail_cdfs[band[c]][pt], &coef_head_cdfs[band[c]][pt],
                 0, !c, 0, ZERO_TOKEN);
 #endif
       token_cache[scan[c]] = 0;
@@ -578,10 +578,10 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
           (c + 1 == eob) ? (c + 1 == seg_eob ? LAST_EOB : EARLY_EOB) : NO_EOB;
       av1_get_token_extra(v, &token, &extra);
 #if CONFIG_COEFF_CTX_REDUCE
-      add_token(&t, &coef_tail_cdfs[band[c]][0], &coef_head_cdfs[band[c]][pt],
+      add_token(&t, &coef_tail_cdfs[band[c]][2], &coef_head_cdfs[band[c]][pt],
                 eob_val, 0, extra, (uint8_t)token);
 #else
-      add_token(&t, &coef_tail_cdfs[band[c]][0], &coef_head_cdfs[band[c]][pt],
+      add_token(&t, &coef_tail_cdfs[band[c]][pt], &coef_head_cdfs[band[c]][pt],
                 eob_val, !c, extra, (uint8_t)token);
 #endif
       token_cache[scan[c]] = av1_pt_energy_class[token];
