@@ -3030,17 +3030,34 @@ void av1_coef_pareto_cdfs(FRAME_CONTEXT *fc) {
   /* Build the tail based on a Pareto distribution */
   TX_SIZE t;
   int i, j, k, l;
+#if CONFIG_COEFF_CTX_REDUCE
+  for (t = 0; t < TX_SIZES; ++t)
+    for (i = 0; i < PLANE_TYPES; ++i)
+      for (j = 0; j < REF_TYPES; ++j)
+        for (k = 0; k < COEF_BANDS; ++k) {
+          int sum_cdf[CDF_SIZE(ENTROPY_TOKENS)] = {0};
+          aom_cdf_prob cdf[CDF_SIZE(ENTROPY_TOKENS)] = {0};
+          for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l) {
+            for(int p = 0; p < HEAD_TOKENS; ++p)
+              sum_cdf[p] += AOM_ICDF(fc->coef_head_cdfs[t][i][j][k][l][p]);
+          }
+          for (int p = 0; p < HEAD_TOKENS; ++p) {
+            cdf[p] = AOM_ICDF(sum_cdf[p] / BAND_COEFF_CONTEXTS(k));
+          }
+          for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l) {
+            build_tail_cdfs(fc->coef_tail_cdfs[t][i][j][k][l],
+                            cdf, 0);
+          }
+        }
+#else
   for (t = 0; t < TX_SIZES; ++t)
     for (i = 0; i < PLANE_TYPES; ++i)
       for (j = 0; j < REF_TYPES; ++j)
         for (k = 0; k < COEF_BANDS; ++k)
           for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l)
-#if CONFIG_COEFF_CTX_REDUCE
-            build_tail_cdfs(fc->coef_tail_cdfs[t][i][j][k][l],
-                            fc->coef_head_cdfs[t][i][j][k][l], 0);
-#else
             build_tail_cdfs(fc->coef_tail_cdfs[t][i][j][k][l],
                             fc->coef_head_cdfs[t][i][j][k][l], k == 0);
+
 #endif
 }
 
