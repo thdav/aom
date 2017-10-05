@@ -4619,8 +4619,13 @@ static void select_tx_block(const AV1_COMP *cpi, MACROBLOCK *x, int blk_row,
 #else
   int tx_size_ctx = txsize_sqr_map[tx_size];
   int coeff_ctx = get_entropy_context(tx_size, pta, ptl);
+#if CONFIG_COEFF_CTX_REDUCE
+  zero_blk_rate =
+      x->blockz_costs[tx_size_ctx][pd->plane_type][1][coeff_ctx][0];
+#else
   zero_blk_rate =
       x->token_head_costs[tx_size_ctx][pd->plane_type][1][0][coeff_ctx][0];
+#endif
 #endif
 
   rd_stats->ref_rdcost = ref_best_rd;
@@ -4704,8 +4709,13 @@ static void select_tx_block(const AV1_COMP *cpi, MACROBLOCK *x, int blk_row,
 
       tx_size_ctx = txsize_sqr_map[quarter_txsize];
       coeff_ctx = get_entropy_context(quarter_txsize, pta, ptl);
+#if CONFIG_COEFF_CTX_REDUCE
+      zero_blk_rate =
+        x->blockz_costs[tx_size_ctx][pd->plane_type][1][coeff_ctx][0];
+#else
       zero_blk_rate =
           x->token_head_costs[tx_size_ctx][pd->plane_type][1][0][coeff_ctx][0];
+#endif
       if ((RDCOST(x->rdmult, rd_stats_qttx.rate, rd_stats_qttx.dist) >=
                RDCOST(x->rdmult, zero_blk_rate, rd_stats_qttx.sse) ||
            rd_stats_qttx.skip == 1) &&
@@ -4738,8 +4748,13 @@ static void select_tx_block(const AV1_COMP *cpi, MACROBLOCK *x, int blk_row,
 #endif  // !CONFIG_PVQ
       coeff_ctx = get_entropy_context(quarter_txsize, pta + blk_col_offset,
                                       ptl + blk_row_offset);
+#if CONFIG_COEFF_CTX_REDUCE
+      zero_blk_rate =
+        x->blockz_costs[tx_size_ctx][pd->plane_type][1][coeff_ctx][0];
+#else
       zero_blk_rate =
           x->token_head_costs[tx_size_ctx][pd->plane_type][1][0][coeff_ctx][0];
+#endif
       if ((RDCOST(x->rdmult, rd_stats_tmp.rate, rd_stats_tmp.dist) >=
                RDCOST(x->rdmult, zero_blk_rate, rd_stats_tmp.sse) ||
            rd_stats_tmp.skip == 1) &&
