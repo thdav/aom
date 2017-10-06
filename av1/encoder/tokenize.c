@@ -545,7 +545,7 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
 #endif  // CONFIG_MRC_TX && SIGNAL_ANY_MRC_MASK
 
   if (eob == 0)
-    add_token(&t, &coef_tail_cdfs[band[c]][2], &coef_head_cdfs[band[c]][pt], 1,
+    add_token(&t, &coef_tail_cdfs[band[c]][0], &coef_head_cdfs[band[c]][pt], 1,
               1, 0, BLOCK_Z_TOKEN);
 
   while (c < eob) {
@@ -553,14 +553,14 @@ static void tokenize_b(int plane, int block, int blk_row, int blk_col,
     first_val = (c == 0);
 
     if (!v) {
-      add_token(&t, &coef_tail_cdfs[band[c]][2], &coef_head_cdfs[band[c]][pt],
+      add_token(&t, &coef_tail_cdfs[band[c]][0], &coef_head_cdfs[band[c]][pt],
                 0, first_val, 0, ZERO_TOKEN);
       token_cache[scan[c]] = 0;
     } else {
       eob_val =
           (c + 1 == eob) ? (c + 1 == seg_eob ? LAST_EOB : EARLY_EOB) : NO_EOB;
       av1_get_token_extra(v, &token, &extra);
-      add_token(&t, &coef_tail_cdfs[band[c]][2], &coef_head_cdfs[band[c]][pt],
+      add_token(&t, &coef_tail_cdfs[band[c]][0], &coef_head_cdfs[band[c]][pt],
                 eob_val, first_val, extra, (uint8_t)token);
       token_cache[scan[c]] = av1_pt_energy_class[token];
     }

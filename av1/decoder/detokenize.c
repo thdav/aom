@@ -205,7 +205,7 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
     more_data = comb_token & 1;
 
     if (token > ONE_TOKEN)
-      token += av1_read_record_symbol(xd->counts, r, coef_tail_cdfs[band][2],
+      token += av1_read_record_symbol(xd->counts, r, coef_tail_cdfs[band][0],
                                       TAIL_TOKENS, ACCT_STR);
 #if CONFIG_NEW_QUANT
     dqv_val = &dq_val[band][0];
