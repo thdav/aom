@@ -238,6 +238,7 @@ static INLINE const uint8_t *get_band_translate(TX_SIZE tx_size) {
   }
 }
 
+void av1_dump_coeff_tail(struct AV1Common *cm);
 // 128 lists of probabilities are stored for the following ONE node probs:
 // 1, 3, 5, 7, ..., 253, 255
 // In between probabilities are interpolated linearly

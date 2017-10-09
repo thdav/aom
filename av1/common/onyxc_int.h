@@ -205,6 +205,7 @@ typedef int BASE_CTX_TABLE[2 /*col*/][2 /*sig_map*/]
 #endif
 
 typedef struct AV1Common {
+  FILE *outfile;
   struct aom_internal_error_info error;
   aom_color_space_t color_space;
   aom_transfer_function_t transfer_function;

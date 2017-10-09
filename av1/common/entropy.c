@@ -2169,6 +2169,36 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
   av1_coef_pareto_cdfs(cm->fc);
 }
 
+void av1_dump_coeff_tail(AV1_COMMON *cm)
+{
+  FILE * outfile;
+  if (!(outfile = fopen ("tail_count", "ab"))) {
+        abort();
+  }
+  FRAME_COUNTS *counts = &cm->counts;
+  TX_SIZE t;
+  int i, j, k, l, p;
+  for (t = 0; t < TX_SIZES; ++t){
+    for (i = 0; i < PLANE_TYPES; ++i){
+      for (j = 0; j < REF_TYPES; ++j){
+        for (k = 0; k < COEF_BANDS; ++k){
+          for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l) {
+            for (p = 0; p < TAIL_TOKENS; ++p) {
+              fprintf(outfile,"%d", counts->coeff_tail_counts[t][i][j][k][l][p]);
+              if (p < TAIL_TOKENS-1)
+                fprintf(outfile,", ");
+              else
+                fprintf(outfile,"\n");
+            }
+
+          }
+        }
+      }
+    }
+  }
+  fclose(outfile);
+}
+
 #if CONFIG_LV_MAP
 void av1_adapt_coef_probs(AV1_COMMON *cm) {
   unsigned int count_sat, update_factor;
