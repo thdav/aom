@@ -1480,7 +1480,7 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
       cost = av1_get_token_cost(v, &prev_t, cat6_bits);
       eob_val = (eob == 1) ? EARLY_EOB : NO_EOB;
       cost += av1_get_coeff_token_cost(
-          prev_t, eob_val, 1, (*head_token_costs)[pt], (*tail_token_costs)[pt*(ref&&!type)]);
+          prev_t, eob_val, 1, (*head_token_costs)[pt], (*tail_token_costs)[pt*!ref]);
 
       token_cache[0] = av1_pt_energy_class[prev_t];
       ++head_token_costs;
@@ -1497,7 +1497,7 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
             (c + 1 == eob) ? (c + 1 == seg_eob ? LAST_EOB : EARLY_EOB) : NO_EOB;
         cost += av1_get_coeff_token_cost(t, eob_val, 0,
                                          (*head_token_costs)[!prev_t],
-                                         (*tail_token_costs)[(!prev_t)*(ref&&!type)]);
+                                         (*tail_token_costs)[(!prev_t)*!ref]);
         prev_t = t;
         if (!--band_left) {
           band_left = *band_count++;
@@ -1514,7 +1514,7 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
       cost = av1_get_token_cost(v, &tok, cat6_bits);
       eob_val = (eob == 1) ? EARLY_EOB : NO_EOB;
       cost += av1_get_coeff_token_cost(tok, eob_val, 1, (*head_token_costs)[pt],
-                                       (*tail_token_costs)[pt*(ref&&!type)]);
+                                       (*tail_token_costs)[pt*!ref]);
 
       token_cache[0] = av1_pt_energy_class[tok];
       ++head_token_costs;
@@ -1530,7 +1530,7 @@ static int cost_coeffs(const AV1_COMMON *const cm, MACROBLOCK *x, int plane,
         eob_val =
             (c + 1 == eob) ? (c + 1 == seg_eob ? LAST_EOB : EARLY_EOB) : NO_EOB;
         cost += av1_get_coeff_token_cost(
-            tok, eob_val, 0, (*head_token_costs)[pt], (*tail_token_costs)[pt*(ref&&!type)]);
+            tok, eob_val, 0, (*head_token_costs)[pt], (*tail_token_costs)[pt*!ref]);
         token_cache[rc] = av1_pt_energy_class[tok];
         if (!--band_left) {
           band_left = *band_count++;
