@@ -145,6 +145,8 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
       ec_ctx->coef_head_cdfs[tx_size_ctx][type][ref];
   aom_cdf_prob(*coef_tail_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
       ec_ctx->coef_tail_cdfs[tx_size_ctx][type][ref];
+  unsigned int(*coef_tail_counts)[COEFF_CONTEXTS][TAIL_TOKENS] =
+    xd->counts->coeff_tail_counts[tx_size_ctx][type][ref];
   int val = 0;
 
   uint8_t token_cache[MAX_TX_SQUARE];
@@ -204,9 +206,11 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
 
     more_data = comb_token & 1;
 
-    if (token > ONE_TOKEN)
+    if (token > ONE_TOKEN) {
       token += av1_read_record_symbol(xd->counts, r, coef_tail_cdfs[band][0],
                                       TAIL_TOKENS, ACCT_STR);
+      coef_tail_counts[band][0][token - TWO_TOKEN]++;
+    }
 #if CONFIG_NEW_QUANT
     dqv_val = &dq_val[band][0];
 #endif  // CONFIG_NEW_QUANT

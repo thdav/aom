@@ -253,6 +253,7 @@ extern const aom_prob av1_pareto8_full[COEFF_PROB_MODELS][MODEL_NODES];
 
 typedef aom_cdf_prob coeff_cdf_model[REF_TYPES][COEF_BANDS][COEFF_CONTEXTS]
                                     [CDF_SIZE(ENTROPY_TOKENS)];
+typedef unsigned int coeff_cdf_counts[REF_TYPES][COEF_BANDS][COEFF_CONTEXTS][TAIL_TOKENS];
 extern const aom_cdf_prob av1_pareto8_token_probs[COEFF_PROB_MODELS]
                                                  [ENTROPY_TOKENS - 2];
 extern const aom_cdf_prob av1_pareto8_tail_probs[COEFF_PROB_MODELS]
