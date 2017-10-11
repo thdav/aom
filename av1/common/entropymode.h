@@ -393,6 +393,7 @@ typedef struct FRAME_COUNTS {
 // Note: This structure should only contain 'unsigned int' fields, or
 // aggregates built solely from 'unsigned int' fields/elements
   coeff_cdf_counts coeff_tail_counts[TX_SIZES][PLANE_TYPES];
+  coeff_cdf_counts coeff_head_counts[TX_SIZES][PLANE_TYPES];
 #if CONFIG_ENTROPY_STATS
   unsigned int kf_y_mode[INTRA_MODES][INTRA_MODES][INTRA_MODES];
   unsigned int y_mode[BLOCK_SIZE_GROUPS][INTRA_MODES];
