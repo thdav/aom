@@ -3679,10 +3679,36 @@ static void av1_default_coef_cdfs(FRAME_CONTEXT *fc) {
   av1_copy(fc->coef_head_cdfs[TX_16X16], default_coef_head_cdf_16x16);
   av1_copy(fc->coef_head_cdfs[TX_32X32], default_coef_head_cdf_32x32);
 #if CONFIG_TX64X64
-  av1_copy(fc->coef_head_cdfs[TX_64X64], default_coef_head_cdf_32x32);
+  av1_copy(fc->coef_tail_cdfs[TX_64X64], default_coef_tail_cdf_32x32);
 #endif  // CONFIG_TX64X64
+#if CONFIG_COEFF_CTX_REDUCE
+#if CONFIG_CHROMA_2X2
+  av1_copy(fc->coef_tail_cdfs[TX_2X2], default_coef_tail_cdf_4x4);
+#endif  // CONFIG_CHROMA_2X2
+  av1_copy(fc->coef_tail_cdfs[TX_4X4], default_coef_tail_cdf_4x4);
+  av1_copy(fc->coef_tail_cdfs[TX_8X8], default_coef_tail_cdf_8x8);
+  av1_copy(fc->coef_tail_cdfs[TX_16X16], default_coef_tail_cdf_16x16);
+  av1_copy(fc->coef_tail_cdfs[TX_32X32], default_coef_tail_cdf_32x32);
+#if CONFIG_TX64X64
+  av1_copy(fc->coef_tail_cdfs[TX_64X64], default_coef_tail_cdf_32x32);
+#endif  // CONFIG_TX64X64
+#endif
 }
 #endif  // !CONFIG_Q_ADAPT_PROBS
+
+static void validate_coef_cdfs(FRAME_CONTEXT *fc) {
+  /* Build the tail based on a Pareto distribution */
+  TX_SIZE t;
+  int i, j, k, l;
+  for (t = 0; t < TX_SIZES; ++t)
+    for (i = 0; i < PLANE_TYPES; ++i)
+      for (j = 0; j < REF_TYPES; ++j)
+        for (k = 0; k < COEF_BANDS; ++k)
+          for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l) {
+            validate_cdf(fc->coef_head_cdfs[t][i][j][k][l], HEAD_TOKENS + k==0);
+            validate_cdf(fc->coef_tail_cdfs[t][i][j][j][l], TAIL_TOKENS);
+          }
+}
 
 void av1_coef_pareto_cdfs(FRAME_CONTEXT *fc) {
   /* Build the tail based on a Pareto distribution */
@@ -3855,8 +3881,8 @@ void av1_coef_pareto_cdfs(FRAME_CONTEXT *fc) {
 
 void av1_default_coef_probs(AV1_COMMON *cm) {
 
-  coeff_cdf_model new_coef_tail_cdfs[TX_SIZES][PLANE_TYPES];
-  coeff_cdf_model new_coef_head_cdfs[TX_SIZES][PLANE_TYPES];
+//  coeff_cdf_model new_coef_tail_cdfs[TX_SIZES][PLANE_TYPES];
+//  coeff_cdf_model new_coef_head_cdfs[TX_SIZES][PLANE_TYPES];
 #if CONFIG_Q_ADAPT_PROBS
   const int index = AOMMIN(TOKEN_CDF_Q_CTXS - 1, cm->base_qindex / 64);
 #if CONFIG_CHROMA_2X2
@@ -3879,7 +3905,10 @@ void av1_default_coef_probs(AV1_COMMON *cm) {
   /* Load the head tokens */
   av1_default_coef_cdfs(cm->fc);
 #endif  // CONFIG_Q_ADAPT_PROBS
+#if !CONFIG_COEFF_CTX_REDUCE
   av1_coef_pareto_cdfs(cm->fc);
+#endif
+  validate_coef_cdfs(cm->fc);
 //  make_new_cdfs(new_coef_head_cdfs, new_coef_tail_cdfs, cm->fc->coef_head_cdfs, cm->fc->coef_tail_cdfs);
 }
 

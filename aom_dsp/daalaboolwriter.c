@@ -21,8 +21,10 @@ void aom_daala_start_encode(daala_writer *br, uint8_t *source) {
 void aom_daala_stop_encode(daala_writer *br) {
   uint32_t daala_bytes;
   unsigned char *daala_data;
+  fprintf(stderr,"Calling done\n");
   daala_data = od_ec_enc_done(&br->ec, &daala_bytes);
   memcpy(br->buffer, daala_data, daala_bytes);
   br->pos = daala_bytes;
+  fprintf(stderr,"Calling clear\n");
   od_ec_enc_clear(&br->ec);
 }

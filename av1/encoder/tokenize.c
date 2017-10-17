@@ -319,12 +319,22 @@ static INLINE void add_token(TOKENEXTRA **t,
   if (token == BLOCK_Z_TOKEN) {
     update_cdf(*head_cdf, 0, HEAD_TOKENS + 1);
   } else {
+#if CONFIG_COEFF_CTX_REDUCE
+    if (eob_val != LAST_EOB) {
+      const int symb = 2 * AOMMIN(token, THREE_TOKEN) - eob_val + first_val;
+      update_cdf(*head_cdf, symb, HEAD_TOKENS + first_val);
+    }
+    if (token > TWO_TOKEN)
+      update_cdf(*tail_cdf, token - THREE_TOKEN, TAIL_TOKENS);
+
+#else
     if (eob_val != LAST_EOB) {
       const int symb = 2 * AOMMIN(token, TWO_TOKEN) - eob_val + first_val;
       update_cdf(*head_cdf, symb, HEAD_TOKENS + first_val);
     }
     if (token > ONE_TOKEN)
       update_cdf(*tail_cdf, token - TWO_TOKEN, TAIL_TOKENS);
+#endif
   }
 }
 #endif  // !CONFIG_PVQ || CONFIG_VAR_TX

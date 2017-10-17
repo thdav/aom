@@ -643,6 +643,7 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
                            TX_TYPE tx_type, int is_inter,
 #endif  // CONFIG_MRC_TX && SIGNAL_ANY_MRC_MASK
                            TOKEN_STATS *token_stats) {
+  fprintf(stderr,"Called packing\n");
   const TOKENEXTRA *p = *tp;
 #if CONFIG_VAR_TX
   int count = 0;
@@ -675,14 +676,29 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
     const av1_extra_bit *const extra_bits = &av1_extra_bits[token];
     if (eob_val == LAST_EOB) {
       // Just code a flag indicating whether the value is >1 or 1.
+#if CONFIG_COEFF_CTX_REDUCE
       aom_write_bit(w, token != ONE_TOKEN);
+      if (token > ONE_TOKEN) aom_write_bit(w, token != TWO_TOKEN);
+#else
+      aom_write_bit(w, token != ONE_TOKEN);
+#endif
     } else {
+#if CONFIG_COEFF_CTX_REDUCE
+      int comb_symb = 2 * AOMMIN(token, THREE_TOKEN) - eob_val + p->first_val;
+#else
       int comb_symb = 2 * AOMMIN(token, TWO_TOKEN) - eob_val + p->first_val;
+#endif
       aom_write_symbol(w, comb_symb, *p->head_cdf, HEAD_TOKENS + p->first_val);
     }
+#if CONFIG_COEFF_CTX_REDUCE
+    if (token > TWO_TOKEN) {
+      aom_write_symbol(w, token - THREE_TOKEN, *p->tail_cdf, TAIL_TOKENS);
+    }
+#else
     if (token > ONE_TOKEN) {
       aom_write_symbol(w, token - TWO_TOKEN, *p->tail_cdf, TAIL_TOKENS);
     }
+#endif
 
     if (extra_bits->base_val) {
       const int bit_string = p->extra;
@@ -716,6 +732,7 @@ static void pack_mb_tokens(aom_writer *w, const TOKENEXTRA **tp,
   }
 
   *tp = p;
+  fprintf(stderr,"Packed\n");
 }
 #endif  // !CONFIG_LV_MAP
 #else   // !CONFIG_PVQ
@@ -826,6 +843,7 @@ static void pack_txb_tokens(aom_writer *w,
                             BLOCK_SIZE plane_bsize, aom_bit_depth_t bit_depth,
                             int block, int blk_row, int blk_col,
                             TX_SIZE tx_size, TOKEN_STATS *token_stats) {
+  fprintf(stderr,"Called pack_txb_tokens\n");
   const struct macroblockd_plane *const pd = &xd->plane[plane];
   const BLOCK_SIZE bsize = txsize_to_bsize[tx_size];
   const int tx_row = blk_row >> (1 - pd->subsampling_y);
@@ -885,6 +903,7 @@ static void pack_txb_tokens(aom_writer *w,
       block += step;
     }
   }
+  fprintf(stderr,"returns from pack_txb_tokens\n");
 }
 #else  // CONFIG_LV_MAP
 static void pack_txb_tokens(aom_writer *w, const TOKENEXTRA **tp,
@@ -896,6 +915,7 @@ static void pack_txb_tokens(aom_writer *w, const TOKENEXTRA **tp,
                             BLOCK_SIZE plane_bsize, aom_bit_depth_t bit_depth,
                             int block, int blk_row, int blk_col,
                             TX_SIZE tx_size, TOKEN_STATS *token_stats) {
+  fprintf(stderr,"Called pack_txb_tokens\n");
   const struct macroblockd_plane *const pd = &xd->plane[plane];
   const BLOCK_SIZE bsize = txsize_to_bsize[tx_size];
   const int tx_row = blk_row >> (1 - pd->subsampling_y);
@@ -918,6 +938,7 @@ static void pack_txb_tokens(aom_writer *w, const TOKENEXTRA **tp,
     TOKEN_STATS tmp_token_stats;
     init_token_stats(&tmp_token_stats);
 #if !CONFIG_PVQ
+    fprintf(stderr,"Going to call\n");
     pack_mb_tokens(w, tp, tok_end, bit_depth, tx_size,
 #if CONFIG_MRC_TX && SIGNAL_ANY_MRC_MASK
                    tx_type, is_inter_block(mbmi),
@@ -968,6 +989,7 @@ static void pack_txb_tokens(aom_writer *w, const TOKENEXTRA **tp,
       block += step;
     }
   }
+  fprintf(stderr,"returning from pack_txb_tokens\n");
 }
 #endif  // CONFIG_LV_MAP
 #endif  // CONFIG_VAR_TX
@@ -3112,6 +3134,7 @@ static void write_modes_sb(AV1_COMP *const cpi, const TileInfo *const tile,
   }
 #endif  // CONFIG_SUPERTX
 
+fprintf(stderr,"GHA\n");
 // update partition context
 #if CONFIG_EXT_PARTITION_TYPES
   update_ext_partition_context(xd, mi_row, mi_col, subsize, bsize, partition);
@@ -3195,6 +3218,7 @@ static void write_modes_sb(AV1_COMP *const cpi, const TileInfo *const tile,
     }
   }
 #endif
+  fprintf(stderr,"GHB\n");
 }
 
 static void write_modes(AV1_COMP *const cpi, const TileInfo *const tile,
@@ -3246,6 +3270,7 @@ static void write_modes(AV1_COMP *const cpi, const TileInfo *const tile,
   // Reset curr_pos in case we repack the bitstream
   cpi->td.mb.pvq_q->curr_pos = 0;
 #endif
+  fprintf(stderr,"GHC\n");
 }
 
 #if CONFIG_LOOP_RESTORATION
@@ -3871,6 +3896,7 @@ static INLINE int find_identical_tile(
 static uint32_t write_tiles(AV1_COMP *const cpi, uint8_t *const dst,
                             unsigned int *max_tile_size,
                             unsigned int *max_tile_col_size) {
+  fprintf(stderr, "Started writing tiles\n");
   const AV1_COMMON *const cm = &cpi->common;
   aom_writer mode_bc;
   int tile_row, tile_col;
@@ -3949,6 +3975,7 @@ static uint32_t write_tiles(AV1_COMP *const cpi, uint8_t *const dst,
 #endif
         aom_start_encode(&mode_bc, buf->data + data_offset);
         write_modes(cpi, &tile_info, &mode_bc, &tok, tok_end);
+        fprintf(stderr,"GHD\n");
         assert(tok == tok_end);
         aom_stop_encode(&mode_bc);
         tile_size = mode_bc.pos;
@@ -4134,12 +4161,15 @@ static uint32_t write_tiles(AV1_COMP *const cpi, uint8_t *const dst,
 
         aom_start_encode(&mode_bc, dst + total_size);
         write_modes(cpi, &tile_info, &mode_bc, &tok, tok_end);
+        fprintf(stderr,"GHE\n");
 #if !CONFIG_LV_MAP
 #if !CONFIG_PVQ
         assert(tok == tok_end);
 #endif  // !CONFIG_PVQ
 #endif  // !CONFIG_LV_MAP
+
         aom_stop_encode(&mode_bc);
+        fprintf(stderr,"Stopping encode\n");
         tile_size = mode_bc.pos;
 #if CONFIG_PVQ
         cpi->td.mb.pvq_q = NULL;
@@ -4159,6 +4189,7 @@ static uint32_t write_tiles(AV1_COMP *const cpi, uint8_t *const dst,
         total_size += tile_size;
       }
     }
+    fprintf(stderr,"GHE-A\n");
     // Write the final tile group size
     if (n_log2_tiles) {
       aom_wb_overwrite_literal(
@@ -4181,6 +4212,7 @@ static uint32_t write_tiles(AV1_COMP *const cpi, uint8_t *const dst,
 #if CONFIG_EXT_TILE
   }
 #endif  // CONFIG_EXT_TILE
+  fprintf(stderr, "Finished writing tiles\n");
   return (uint32_t)total_size;
 }
 #endif
@@ -5580,6 +5612,7 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
 #endif
         aom_start_encode(&mode_bc, buf->data + data_offset);
         write_modes(cpi, &tile_info, &mode_bc, &tok, tok_end);
+        fprintf(stderr,"GHF\n");
         assert(tok == tok_end);
         aom_stop_encode(&mode_bc);
         tile_size = mode_bc.pos;
@@ -5697,6 +5730,7 @@ static uint32_t write_tiles_in_tg_obus(AV1_COMP *const cpi, uint8_t *const dst,
 #endif  // CONFIG_ANS
         aom_start_encode(&mode_bc, dst + total_size);
         write_modes(cpi, &tile_info, &mode_bc, &tok, tok_end);
+        fprintf(stderr,"GHG\n");
 #if !CONFIG_LV_MAP
 #if !CONFIG_PVQ
         assert(tok == tok_end);

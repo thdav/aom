@@ -23,6 +23,7 @@
 #if !CONFIG_ANS
 #include "aom_dsp/entcode.h"
 #endif
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -156,7 +157,28 @@ static INLINE void av1_tree_to_cdf(const aom_tree_index *tree,
 
 void av1_indices_from_tree(int *ind, int *inv, const aom_tree_index *tree);
 
+static INLINE void validate_cdf(aom_cdf_prob* cdf, int nsymbs)
+{
+  int i;
+  if (cdf[nsymbs-1] != AOM_ICDF(CDF_PROB_TOP)) {
+    fprintf(stderr, "nsymbs = %d, val=%d, val before =%d\n",nsymbs, AOM_ICDF(cdf[nsymbs-1]), AOM_ICDF(cdf[nsymbs-2]));
+    abort();
+  }
+  if (AOM_ICDF(cdf[0]) == 0)
+    abort();
+  if (AOM_ICDF(cdf[0]) > CDF_PROB_TOP)
+    abort();
+  for (i=1; i<nsymbs; ++i) {
+    if (AOM_ICDF(cdf[i]) <= AOM_ICDF(cdf[i-1]))
+      abort();
+    if (AOM_ICDF(cdf[i]) > CDF_PROB_TOP)
+      abort();
+  }
+}
+
+
 static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
+  validate_cdf(cdf,nsymbs);
   int rate = 4 + (cdf[nsymbs] > 31) + get_msb(nsymbs);
 #if CONFIG_LV_MAP
   if (nsymbs == 2)
