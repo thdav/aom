@@ -5705,6 +5705,7 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
 #if CONFIG_LV_MAP
       av1_adapt_coef_probs(cm);
 #endif  // CONFIG_LV_MAP
+      av1_dump_coeff_head_and_tail(cm);
 #if CONFIG_SYMBOLRATE
       av1_dump_symbol_rate(cm);
 #endif
