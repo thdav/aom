@@ -223,7 +223,7 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
 
 #if CONFIG_COEFF_CTX_REDUCE
     if (token > TWO_TOKEN)
-      token += av1_read_record_symbol(xd->counts, r, coef_tail_cdfs[band][ctx],
+      token += av1_read_record_symbol(xd->counts, r, coef_tail_cdfs[band][0],
                                       TAIL_TOKENS, ACCT_STR);
 #else
     if (token > ONE_TOKEN)
