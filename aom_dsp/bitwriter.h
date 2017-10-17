@@ -74,9 +74,7 @@ static INLINE void aom_stop_encode(aom_writer *bc) {
   aom_buf_ans_flush(bc);
   bc->pos = buf_ans_write_end(bc);
 #else
-  fprintf(stderr,"Calling stop_encode\n");
   aom_daala_stop_encode(bc);
-  fprintf(stderr,"Finished stop_encode\n");
 #endif
 }
 

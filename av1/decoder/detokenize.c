@@ -203,12 +203,19 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
       last_pos = (c + 1 == max_eob);
 
       // FIXME
-      comb_token =
-          last_pos
-              ? 2 * av1_read_record_bit(xd->counts, r, ACCT_STR) + 2
-              : av1_read_record_symbol(xd->counts, r, coef_head_cdfs[band][ctx],
-                                       HEAD_TOKENS, ACCT_STR) +
-                    1;
+      if (last_pos) {
+#if CONFIG_COEFF_CTX_REDUCE
+        int g1 = av1_read_record_bit(xd->counts, r, ACCT_STR);
+        int g2 = 0;
+        if (g1) g2 = av1_read_record_bit(xd->counts, r, ACCT_STR);
+        comb_token = 2 * (g1 + g2) + 2;
+#else
+        comb_token = 2 * av1_read_record_bit(xd->counts, r, ACCT_STR) + 2;
+#endif
+      } else {
+        comb_token =  av1_read_record_symbol(xd->counts, r, coef_head_cdfs[band][ctx],
+            HEAD_TOKENS, ACCT_STR) + 1;
+      }
       token = comb_token >> 1;
     }
 
