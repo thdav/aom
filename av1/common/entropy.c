@@ -3643,6 +3643,56 @@ static const coeff_cdf_model default_coef_head_cdf_32x32[PLANE_TYPES] = {
 /* clang-format on */
 #endif  // !CONFIG_Q_ADAPT_PROBS
 
+void av1_dump_coeff_head_and_tail(AV1_COMMON *cm)
+{
+  FILE * outfile;
+  if (!(outfile = fopen ("tail_count", "ab"))) {
+        abort();
+  }
+  FRAME_COUNTS *counts = &cm->counts;
+  TX_SIZE t;
+  int i, j, k, l, p;
+  for (t = 0; t < TX_SIZES; ++t){
+    for (i = 0; i < PLANE_TYPES; ++i){
+      for (j = 0; j < REF_TYPES; ++j){
+        for (k = 0; k < COEF_BANDS; ++k){
+          for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l) {
+            for (p = 0; p < HEAD_TOKENS + (k==0); ++p) {
+              fprintf(outfile,"%d", counts->coeff_head_counts[t][i][j][k][l][p]);
+              if (p < HEAD_TOKENS + (k==0) -1)
+                fprintf(outfile,", ");
+              else
+                fprintf(outfile,"\n");
+            }
+
+          }
+        }
+      }
+    }
+  }
+
+  for (t = 0; t < TX_SIZES; ++t){
+    for (i = 0; i < PLANE_TYPES; ++i){
+      for (j = 0; j < REF_TYPES; ++j){
+        for (k = 0; k < COEF_BANDS; ++k){
+          for (l = 0; l < BAND_COEFF_CONTEXTS(k); ++l) {
+            for (p = 0; p < TAIL_TOKENS; ++p) {
+              fprintf(outfile,"%d", counts->coeff_tail_counts[t][i][j][k][l][p]);
+              if (p < TAIL_TOKENS-1)
+                fprintf(outfile,", ");
+              else
+                fprintf(outfile,"\n");
+            }
+
+          }
+        }
+      }
+    }
+  }
+  fclose(outfile);
+}
+
+
 static void build_tail_cdfs(aom_cdf_prob cdf_tail[CDF_SIZE(ENTROPY_TOKENS)],
                             aom_cdf_prob cdf_head[CDF_SIZE(ENTROPY_TOKENS)],
                             int band_zero) {

@@ -390,6 +390,8 @@ typedef struct frame_contexts {
 } FRAME_CONTEXT;
 
 typedef struct FRAME_COUNTS {
+  coeff_cdf_counts coeff_tail_counts[TX_SIZES][PLANE_TYPES];
+  coeff_cdf_counts coeff_head_counts[TX_SIZES][PLANE_TYPES];
 // Note: This structure should only contain 'unsigned int' fields, or
 // aggregates built solely from 'unsigned int' fields/elements
 #if CONFIG_ENTROPY_STATS

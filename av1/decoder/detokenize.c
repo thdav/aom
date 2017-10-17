@@ -145,6 +145,12 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
       ec_ctx->coef_head_cdfs[tx_size_ctx][type][ref];
   aom_cdf_prob(*coef_tail_cdfs)[COEFF_CONTEXTS][CDF_SIZE(ENTROPY_TOKENS)] =
       ec_ctx->coef_tail_cdfs[tx_size_ctx][type][ref];
+
+  unsigned int(*coef_tail_counts)[COEFF_CONTEXTS][ENTROPY_TOKENS] =
+    xd->counts->coeff_tail_counts[tx_size_ctx][type][ref];
+  unsigned int(*coef_head_counts)[COEFF_CONTEXTS][ENTROPY_TOKENS] =
+    xd->counts->coeff_head_counts[tx_size_ctx][type][ref];
+
   int val = 0;
 
   uint8_t token_cache[MAX_TX_SQUARE];
@@ -183,6 +189,7 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
     } else {
       comb_token = av1_read_record_symbol( xd->counts, r, coef_head_cdfs[band][ctx],
             HEAD_TOKENS + first_pos, ACCT_STR) + !first_pos;
+      if (xd->counts) coef_head_counts[band][ctx][comb_token - !first_pos]++;
     }
     if (first_pos) {
       if (comb_token == 0) return 0;
@@ -215,6 +222,7 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
       } else {
         comb_token =  av1_read_record_symbol(xd->counts, r, coef_head_cdfs[band][ctx],
             HEAD_TOKENS, ACCT_STR) + 1;
+        if (xd->counts) coef_head_counts[band][ctx][comb_token - 1]++;
       }
       token = comb_token >> 1;
     }
@@ -222,9 +230,11 @@ static int decode_coefs(MACROBLOCKD *xd, PLANE_TYPE type, tran_low_t *dqcoeff,
     more_data = comb_token & 1;
 
 #if CONFIG_COEFF_CTX_REDUCE
-    if (token > TWO_TOKEN)
+    if (token > TWO_TOKEN) {
       token += av1_read_record_symbol(xd->counts, r, coef_tail_cdfs[band][0],
                                       TAIL_TOKENS, ACCT_STR);
+      if (xd->counts) coef_tail_counts[band][0][token - THREE_TOKEN]++;
+    }
 #else
     if (token > ONE_TOKEN)
       token += av1_read_record_symbol(xd->counts, r, coef_tail_cdfs[band][ctx],
