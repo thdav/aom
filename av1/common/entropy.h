@@ -226,7 +226,7 @@ static INLINE int av1_get_cat6_extrabits_size(TX_SIZE tx_size,
 
 struct AV1Common;
 struct frame_contexts;
-void av1_dump_coeff_head_and_tail(AV1Common *cm);
+void av1_dump_coeff_head_and_tail(struct AV1Common *cm);
 void av1_default_coef_probs(struct AV1Common *cm);
 #if CONFIG_LV_MAP
 void av1_adapt_coef_probs(struct AV1Common *cm);
