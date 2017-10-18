@@ -492,12 +492,13 @@ static INLINE void av1_merge_rd_stats(RD_STATS *rd_stats_dst,
 static INLINE int av1_get_coeff_token_cost(int token, int eob_val, int is_first,
                                            const int *head_cost_table,
                                            const int *tail_cost_table) {
-  if (eob_val == LAST_EOB) return av1_cost_zero(128);
 #if CONFIG_COEFF_CTX_REDUCE
+  if (eob_val == LAST_EOB) return (av1_cost_zero(128) + (token > ONE_TOKEN ? av1_cost_zero(128) : 0));
   const int comb_symb = 2 * AOMMIN(token, THREE_TOKEN) - eob_val + is_first;
   int cost = head_cost_table[comb_symb];
   if (token > TWO_TOKEN) cost += tail_cost_table[token - THREE_TOKEN];
 #else
+  if (eob_val == LAST_EOB) return av1_cost_zero(128);
   const int comb_symb = 2 * AOMMIN(token, TWO_TOKEN) - eob_val + is_first;
   int cost = head_cost_table[comb_symb];
   if (token > ONE_TOKEN) cost += tail_cost_table[token - TWO_TOKEN];

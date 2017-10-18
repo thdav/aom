@@ -178,7 +178,7 @@ static INLINE void validate_cdf(aom_cdf_prob* cdf, int nsymbs)
 
 
 static INLINE void update_cdf(aom_cdf_prob *cdf, int val, int nsymbs) {
-  int rate = 3 + (cdf[nsymbs] > 31) + get_msb(nsymbs);
+  int rate = 4 + (cdf[nsymbs] > 31) + get_msb(nsymbs);
 #if CONFIG_LV_MAP
   if (nsymbs == 2)
     rate = 4 + (cdf[nsymbs] > 7) + (cdf[nsymbs] > 15) + get_msb(nsymbs);
